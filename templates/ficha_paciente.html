@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha: {{ paciente.apellidos_nombres }} - Atenciones PJ y CEM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #1e3a5f; --primary-light: #2c5282;
+            --accent: #0d9488; --accent-light: #14b8a6;
+            --danger: #dc2626;
+            --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --radius: 12px; --radius-sm: 8px;
+        }
+
+        [data-theme="dark"] {
+            --primary: #3b82f6; --primary-light: #60a5fa;
+            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .navbar {
+            background: var(--primary); color: white; padding: 0 30px; height: 64px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
+        }
+        .navbar-brand { display: flex; align-items: center; gap: 14px; font-size: 16px; font-weight: 600; }
+        .navbar-brand a { color: white; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .navbar-brand a:hover { opacity: 0.8; }
+        .back-arrow { font-size: 20px; }
+
+        .main { max-width: 900px; margin: 0 auto; padding: 30px; }
+
+        /* ==================== FICHA HEADER ==================== */
+        .ficha-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white; padding: 28px 32px; border-radius: var(--radius);
+            margin-bottom: 24px; position: relative; overflow: hidden;
+        }
+        .ficha-header::before {
+            content: ''; position: absolute; top: -50%; right: -10%;
+            width: 200px; height: 200px; background: rgba(255,255,255,0.05); border-radius: 50%;
+        }
+        .ficha-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; position: relative; }
+        .ficha-header .doc-info { font-size: 14px; color: rgba(255,255,255,0.8); position: relative; }
+        .ficha-header .badges { display: flex; gap: 10px; margin-top: 14px; position: relative; flex-wrap: wrap; }
+        .badge {
+            padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 600;
+        }
+        .badge-judicial { background: rgba(255,255,255,0.2); color: white; }
+        .badge-cem { background: rgba(20,184,166,0.3); color: #5eead4; }
+        .badge-activo { background: rgba(34,197,94,0.3); color: #86efac; }
+        .badge-inactivo { background: rgba(239,68,68,0.3); color: #fca5a5; }
+
+        /* ==================== CARDS ==================== */
+        .ficha-card {
+            background: var(--card); border-radius: var(--radius);
+            padding: 24px; margin-bottom: 20px;
+            box-shadow: var(--shadow); border: 1px solid var(--border);
+        }
+        .ficha-card-title {
+            font-size: 16px; font-weight: 600; color: var(--text);
+            margin-bottom: 18px; display: flex; align-items: center; gap: 10px;
+        }
+        .ficha-card-title::before {
+            content: ''; width: 4px; height: 20px; background: var(--primary); border-radius: 2px;
+        }
+
+        .ficha-info-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+        }
+        .ficha-info-item {
+            padding: 12px; background: var(--bg); border-radius: var(--radius-sm);
+        }
+        .ficha-info-item label {
+            font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 4px; display: block;
+        }
+        .ficha-info-item .value {
+            font-size: 14px; font-weight: 600; color: var(--text);
+        }
+        .ficha-info-item .value.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+
+        .ficha-imc-box {
+            display: inline-flex; align-items: center; gap: 12px;
+            padding: 10px 16px; border-radius: var(--radius-sm); margin-top: 8px;
+        }
+        .ficha-imc-box.normal { background: #d1fae5; color: #166534; }
+        .ficha-imc-box.sobrepeso { background: #fef3c7; color: #92400e; }
+        .ficha-imc-box.obesidad { background: #fee2e2; color: #991b1b; }
+        .ficha-imc-box.delgadez { background: #fef3c7; color: #92400e; }
+
+        /* ==================== ATENCIONES ==================== */
+        .ficha-atenciones-list { display: flex; flex-direction: column; gap: 12px; }
+        .ficha-atencion-item {
+            background: var(--bg); border-radius: var(--radius-sm); padding: 16px;
+            border-left: 4px solid var(--accent); transition: all 0.2s;
+        }
+        .ficha-atencion-item:hover { transform: translateX(4px); }
+        .ficha-atencion-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .ficha-atencion-fecha { font-size: 14px; font-weight: 600; color: var(--text); }
+        .ficha-atencion-diag { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        .ficha-atencion-diag strong { color: var(--text); }
+        .ficha-atencion-vitals {
+            display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap;
+        }
+        .ficha-vitals-tag {
+            font-size: 12px; padding: 4px 10px; border-radius: 100px;
+            background: var(--card); color: var(--text-muted);
+        }
+        .ficha-vitals-tag strong { color: var(--text); }
+
+        .ficha-sin-atenciones {
+            text-align: center; padding: 40px; color: var(--text-muted);
+        }
+        .ficha-sin-atenciones .icon { font-size: 48px; margin-bottom: 12px; }
+
+        /* ==================== BOTONES ==================== */
+        .ficha-acciones {
+            display: flex; gap: 12px; margin-top: 24px; justify-content: flex-start; flex-wrap: wrap;
+        }
+        .btn-ficha {
+            padding: 12px 24px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+            border: none; cursor: pointer; transition: all 0.2s; display: inline-flex;
+            align-items: center; gap: 8px; white-space: nowrap; font-family: 'Inter', sans-serif;
+        }
+        .btn-ficha-primary { background: #1e3a5f; color: white; }
+        .btn-ficha-primary:hover { background: #2c5282; transform: translateY(-1px); }
+        .btn-ficha-secondary { background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; }
+        .btn-ficha-secondary:hover { background: #e2e8f0; transform: translateY(-1px); }
+
+        @media (max-width: 768px) {
+            .main { padding: 16px; }
+            .ficha-info-grid { grid-template-columns: 1fr; }
+            .ficha-header { padding: 20px; }
+            .ficha-header h1 { font-size: 18px; }
+            .ficha-atencion-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .ficha-acciones { flex-direction: column; }
+            .btn-ficha { width: 100%; justify-content: center; }
+        }
+
+ /* ==================== ESTILOS DE IMPRESION ==================== */
+@media print {
+    @page {
+        margin: 15mm;
+        size: auto;
+    }
+    
+    .navbar { display: none !important; }
+    .ficha-acciones { display: none !important; }
+    
+    .main { 
+        padding: 0 !important; 
+        max-width: 100% !important; 
+        margin: 0 !important;
+    }
+    
+    .ficha-header {
+        background: #1e3a5f !important; 
+        color: white !important;
+        padding: 16px 20px !important; 
+        margin-bottom: 12px !important;
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+        page-break-after: avoid;
+    }
+    .ficha-header::before { display: none; }
+    .ficha-header h1 { font-size: 16px !important; }
+    .ficha-header .doc-info { font-size: 11px !important; }
+    .ficha-header .badges { margin-top: 8px !important; }
+    .ficha-header .badge {
+        padding: 3px 8px !important; 
+        font-size: 9px !important;
+    }
+    
+    .ficha-card {
+        box-shadow: none !important; 
+        border: 1px solid #ddd !important;
+        padding: 12px 16px !important; 
+        margin-bottom: 10px !important;
+        page-break-inside: auto;
+    }
+    .ficha-card-title { 
+        font-size: 13px !important; 
+        margin-bottom: 10px !important; 
+    }
+    
+    .ficha-info-grid { gap: 8px !important; }
+    .ficha-info-item { padding: 6px 8px !important; }
+    .ficha-info-item label { font-size: 8px !important; margin-bottom: 2px !important; }
+    .ficha-info-item .value { font-size: 11px !important; }
+    
+    .ficha-imc-box {
+        padding: 6px 10px !important; 
+        margin-top: 6px !important;
+    }
+    .ficha-imc-box span { font-size: 14px !important; }
+    .ficha-imc-box div div:first-child { font-size: 13px !important; }
+    .ficha-imc-box div div:last-child { font-size: 10px !important; }
+    
+    .ficha-atenciones-list { gap: 6px !important; }
+    .ficha-atencion-item {
+        padding: 8px 12px !important; 
+        margin-bottom: 0 !important;
+        border-left: 3px solid #0d9488 !important;
+        page-break-inside: auto;
+    }
+    .ficha-atencion-header { margin-bottom: 4px !important; }
+    .ficha-atencion-fecha { font-size: 11px !important; }
+    .ficha-atencion-fecha span { font-size: 9px !important; }
+    .ficha-atencion-diag {
+        font-size: 10px !important; 
+        line-height: 1.3 !important; 
+        margin-top: 2px !important;
+    }
+    .ficha-atencion-diag strong { font-size: 10px !important; }
+    .ficha-atencion-vitals { 
+        margin-top: 4px !important; 
+        gap: 6px !important; 
+    }
+    .ficha-vitals-tag { 
+        font-size: 9px !important; 
+        padding: 2px 6px !important; 
+    }
+    
+    .ficha-sin-atenciones { padding: 20px !important; }
+    .ficha-sin-atenciones .icon { font-size: 32px !important; }
+    .ficha-sin-atenciones p { font-size: 11px !important; }
+    .ficha-sin-atenciones p:last-child { font-size: 9px !important; }
+    
+    body { 
+        background: white !important; 
+        font-size: 11px !important;
+    }
+    
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+    </style>
+</head>
+<body>
+    {% if not es_print %}
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/dashboard">
+                <span class="back-arrow">←</span>
+                <span>Volver al Dashboard</span>
+            </a>
+        </div>
+        <div style="font-size: 13px; opacity: 0.8;">Ficha del Paciente</div>
+    </nav>
+    {% endif %}
+
+    <main class="main">
+        <!-- Header -->
+        <div class="ficha-header">
+            <h1>{{ paciente.apellidos_nombres }}</h1>
+            <div class="doc-info">
+                {% if paciente.tipo_documento == 'INDOCUMENTADO' %}
+                    {{ paciente.tipo_documento }}: <strong>{{ paciente.codigo_temporal }}</strong>
+                {% else %}
+                    {{ paciente.tipo_documento }}: <strong>{{ paciente.numero_documento }}</strong>
+                {% endif %}
+                {% if paciente.hcl %}
+                    | HCL: <strong>{{ paciente.hcl }}</strong>
+                {% endif %}
+            </div>
+            <div class="badges">
+                <span class="badge badge-{{ 'judicial' if paciente.origen == 'PODER JUDICIAL' else 'cem' }}">
+                    {{ paciente.origen }}
+                </span>
+                <span class="badge badge-{{ 'activo' if paciente.estado == 'activo' else 'inactivo' }}">
+                    {{ paciente.estado.upper() }}
+                </span>
+                {% if paciente.oficio %}
+                    <span class="badge" style="background: rgba(255,255,255,0.15);">
+                        Oficio: {{ paciente.oficio }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Datos Personales -->
+        <div class="ficha-card">
+            <h3 class="ficha-card-title">Datos Personales</h3>
+            <div class="ficha-info-grid">
+                <div class="ficha-info-item">
+                    <label>Fecha de Nacimiento</label>
+                    <div class="value {{ 'empty' if not paciente.fecha_nacimiento }}">
+                        {{ paciente.fecha_nacimiento or 'No registrado' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Edad</label>
+                    <div class="value {{ 'empty' if not paciente.edad }}">
+                        {{ paciente.edad ~ ' años' if paciente.edad else 'No calculada' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Celular</label>
+                    <div class="value {{ 'empty' if not paciente.celular }}">
+                        {{ paciente.celular or 'No registrado' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Direccion</label>
+                    <div class="value {{ 'empty' if not paciente.direccion }}">
+                        {{ paciente.direccion or 'No registrada' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Distrito</label>
+                    <div class="value {{ 'empty' if not paciente.distrito }}">
+                        {{ paciente.distrito or 'No registrado' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Seguro</label>
+                    <div class="value {{ 'empty' if not paciente.seguro }}">
+                        {{ paciente.seguro or 'No registrado' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signos Vitales -->
+        <div class="ficha-card">
+            <h3 class="ficha-card-title">Signos Vitales</h3>
+            <div class="ficha-info-grid">
+                <div class="ficha-info-item">
+                    <label>Peso</label>
+                    <div class="value {{ 'empty' if not paciente.peso }}">
+                        {{ paciente.peso ~ ' kg' if paciente.peso else 'No registrado' }}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Talla</label>
+                    <div class="value {{ 'empty' if not paciente.talla }}">
+                        {% if paciente.talla %}
+                            {{ (paciente.talla * 100)|int }} cm
+                        {% else %}
+                            No registrada
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="ficha-info-item">
+                    <label>Presion Arterial</label>
+                    <div class="value {{ 'empty' if not paciente.pa }}">
+                        {{ paciente.pa or 'No registrada' }}
+                    </div>
+                </div>
+            </div>
+            {% if paciente.imc %}
+                <div class="ficha-imc-box 
+                    {{ 'delgadez' if paciente.imc < 18.5 else 'normal' if paciente.imc < 25 else 'sobrepeso' if paciente.imc < 30 else 'obesidad' }}">
+                    <span style="font-size: 20px;">📊</span>
+                    <div>
+                        <div style="font-weight: 700; font-size: 16px;">IMC: {{ paciente.imc }}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">
+                            {% if paciente.imc < 18.5 %}Delgadez
+                            {% elif paciente.imc < 25 %}Peso Normal
+                            {% elif paciente.imc < 30 %}Sobrepeso
+                            {% else %}Obesidad{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Historial de Atenciones -->
+        <div class="ficha-card">
+            <h3 class="ficha-card-title">Historial de Atenciones</h3>
+            {% if atenciones %}
+                <div class="ficha-atenciones-list">
+                    {% for a in atenciones %}
+                    <div class="ficha-atencion-item">
+                        <div class="ficha-atencion-header">
+                            <span class="ficha-atencion-fecha">
+                                📅 {{ a.fecha_atencion }} 
+                                <span style="color: var(--text-muted); font-weight: 400; font-size: 12px;">
+                                    ({{ a.mes }}/{{ a.anio }})
+                                </span>
+                            </span>
+                        </div>
+                        {% if a.diagnostico %}
+                            <div class="ficha-atencion-diag">
+                                <strong>Diagnostico:</strong> {{ a.diagnostico }}
+                            </div>
+                        {% endif %}
+                        {% if a.tratamiento %}
+                            <div class="ficha-atencion-diag" style="margin-top: 6px;">
+                                <strong>Tratamiento:</strong> {{ a.tratamiento }}
+                            </div>
+                        {% endif %}
+                        {% if a.observaciones %}
+                            <div class="ficha-atencion-diag" style="margin-top: 6px;">
+                                <strong>Observaciones:</strong> {{ a.observaciones }}
+                            </div>
+                        {% endif %}
+                        <div class="ficha-atencion-vitals">
+                            {% if a.peso %}
+                                <span class="ficha-vitals-tag">⚖️ Peso: <strong>{{ a.peso }} kg</strong></span>
+                            {% endif %}
+                            {% if a.talla %}
+                                <span class="ficha-vitals-tag">📏 Talla: <strong>{{ a.talla }} m</strong></span>
+                            {% endif %}
+                            {% if a.imc %}
+                                <span class="ficha-vitals-tag">📊 IMC: <strong>{{ a.imc }}</strong></span>
+                            {% endif %}
+                            {% if a.pa %}
+                                <span class="ficha-vitals-tag">🩺 PA: <strong>{{ a.pa }}</strong></span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="ficha-sin-atenciones">
+                    <div class="icon">📋</div>
+                    <p>No hay atenciones registradas para este paciente</p>
+                    <p style="font-size: 12px; margin-top: 8px;">Las atenciones apareceran aqui cuando se registren</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Acciones -->
+        {% if not es_print %}
+        <div class="ficha-acciones">
+            <button class="btn-ficha btn-ficha-secondary" onclick="closeModal()">← Volver al Dashboard</button>
+            <button class="btn-ficha btn-ficha-primary" onclick="imprimirFicha()">🖨️ Imprimir Ficha</button>
+        {% endif %}
+    </main>
+
+<script>
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    function closeModal() {
+        if (window.parent !== window) {
+            window.parent.postMessage('cerrar-modal', '*');
+        } else {
+            window.history.back();
+        }
+    }
+
+    function imprimirFicha() {
+        // Si estamos dentro de un iframe de impresión, solo imprimir
+        if (window.location.search.includes('print=1')) {
+            window.print();
+            return;
+        }
+        
+        // Si estamos en el modal, usar el iframe del parent
+        if (window.parent !== window && window.parent.imprimirFichaIframe) {
+            // Extraer ID de la URL actual
+            const pathParts = window.location.pathname.split('/');
+            const id = pathParts[pathParts.length - 1];
+            window.parent.imprimirFichaIframe(id);
+        } else {
+            // Fallback: abrir en nueva ventana
+            const id = '{{ paciente.id }}';
+            window.open(`/paciente/${id}?print=1`, '_blank');
+        }
+    }
+</script>
+
+{% if es_print %}
+<script>
+    window.onload = function() {
+        setTimeout(function() {
+            window.print();
+        }, 500);
+    };
+</script>
+{% endif %}
+</body>
+</html>

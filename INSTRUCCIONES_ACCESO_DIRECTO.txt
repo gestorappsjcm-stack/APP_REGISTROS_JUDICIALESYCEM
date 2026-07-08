@@ -1,0 +1,42 @@
+
+# COMO CREAR ACCESO DIRECTO EN WINDOWS
+
+## Metodo 1: Acceso Directo Simple (recomendado)
+
+1. Ve a tu escritorio
+2. Click derecho → Nuevo → Acceso Directo
+3. En "Ubicacion del elemento" escribe:
+
+   E:\APP_REGISTROS_JUDICIALESYCEM\abrir_app.bat
+
+   (adapta la ruta a tu carpeta)
+
+4. Click "Siguiente" → Nombre: "Registros PJ y CEM" → Finalizar
+
+5. (Opcional) Click derecho en el acceso directo → Propiedades → Cambiar icono
+
+## Metodo 2: Ejecutar sin ventana de comandos
+
+1. Crea un archivo "iniciar_silencioso.vbs" con este contenido:
+
+   Set WshShell = CreateObject("WScript.Shell")
+   WshShell.Run chr(34) & "E:\APP_REGISTROS_JUDICIALESYCEM\abrir_app.bat" & chr(34), 0
+   Set WshShell = Nothing
+
+2. Crea acceso directo a ese .vbs
+3. Al hacer doble click, Flask corre en segundo plano sin ventana negra
+
+## Metodo 3: Para multiples computadoras (RED LOCAL)
+
+Si tienes varias computadoras en el establecimiento:
+
+1. En la computadora SERVIDOR:
+   - Ejecutar: python -m flask run --host=0.0.0.0 --port=5000
+   - Anota la IP de esta PC (ej: 192.168.1.50)
+
+2. En las computadoras CLIENTE:
+   - Abrir navegador
+   - Ir a: http://192.168.1.50:5000
+   - (reemplaza 192.168.1.50 con la IP real del servidor)
+
+Asi todas las PCs usan la misma aplicacion.
