@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, make_response, send_from_directory
 from supabase import create_client
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date, datetime, timedelta
@@ -29,6 +29,22 @@ except Exception as e:
     print(f"Error de conexion: {e}")
     supabase = None
     supabase_service = None
+
+# ============================================
+# SERVIR ARCHIVOS ESTATICOS EN VERCEL
+# ============================================
+
+@app.route('/static/img/<path:filename>')
+def serve_image(filename):
+    return send_from_directory(os.path.join(static_dir, 'img'), filename)
+
+@app.route('/static/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory(os.path.join(static_dir, 'css'), filename)
+
+@app.route('/static/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(static_dir, 'js'), filename)
 
 # ============================================
 # RUTAS PRINCIPALES
