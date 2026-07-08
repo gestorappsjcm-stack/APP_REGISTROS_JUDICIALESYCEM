@@ -58,22 +58,318 @@
             color: #c0392b; font-size: 13px; margin-top: 15px; padding: 10px;
             background: #fdeaea; border-radius: 5px; display: none;
         }
-        .footer-text { color: #888; font-size: 11px; margin-top: 25px; line-height: 1.5; }
+        .footer-text {
+            color: #888;
+            font-size: 11px;
+            margin-top: 25px;
+            line-height: 1.6;
+        }
+        .footer-text .linea-principal {
+            font-weight: 600;
+            color: #1a5276;
+            letter-spacing: 0.5px;
+        }
+        .footer-text .creditos {
+            color: #999;
+            font-size: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+        }
+        .footer-text .creditos .ia-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #1a5276, #2e86ab);
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        /* ========== MODAL DE BIENVENIDA ========== */
+        #modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #modal-overlay.activo {
+            opacity: 1;
+            visibility: visible;
+        }
+        #welcome-modal {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 560px;
+            width: 92%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+            transform: translateY(20px) scale(0.97);
+            transition: transform 0.4s ease-out;
+        }
+        #modal-overlay.activo #welcome-modal {
+            transform: translateY(0) scale(1);
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #1a5276 0%, #2e86ab 100%);
+            padding: 28px 32px 22px;
+            border-radius: 16px 16px 0 0;
+            text-align: center;
+        }
+        .modal-header .iconos-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .modal-header .icono-circulo {
+            width: 50px; height: 50px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-header h2 { color: white; font-size: 20px; font-weight: 700; margin: 0; letter-spacing: 0.3px; }
+        .modal-header p { color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 6px; }
+
+        .modal-body { padding: 24px 32px 20px; }
+
+        .objetivo-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1a5276;
+        }
+        .objetivo-box .titulo-seccion {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #1a5276;
+            font-size: 14px;
+        }
+        .objetivo-box p {
+            color: #444;
+            font-size: 13.5px;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .beneficios-titulo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            font-weight: 700;
+            color: #222;
+            font-size: 14px;
+        }
+
+        .beneficio-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .beneficio-item:last-child { margin-bottom: 0; }
+        .beneficio-icono {
+            min-width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #1a5276, #2e86ab);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .beneficio-item h4 {
+            font-weight: 600;
+            color: #222;
+            font-size: 13px;
+            margin: 0 0 3px 0;
+        }
+        .beneficio-item p {
+            color: #666;
+            font-size: 12.5px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .modal-footer {
+            padding: 0 32px 28px;
+            text-align: center;
+        }
+        .btn-entendido {
+            background: linear-gradient(135deg, #1a5276, #2e86ab);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 36px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(26,82,118,0.3);
+        }
+        .btn-entendido:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(26,82,118,0.4);
+        }
+        .modal-footer .sub-footer {
+            color: #888;
+            font-size: 11px;
+            margin-top: 14px;
+            line-height: 1.6;
+        }
+        .modal-footer .sub-footer .coordinacion {
+            font-weight: 600;
+            color: #1a5276;
+        }
+        .modal-footer .sub-footer .areas {
+            color: #666;
+            font-size: 10.5px;
+        }
+
         @media (max-width: 480px) {
             .login-box { width: 90%; padding: 25px; margin: 20px; }
             .login-box h1 { font-size: 18px; }
             .logo-container { gap: 12px; }
             .logo { width: 55px; height: 55px; }
             .footer-text { font-size: 10px; }
+            .footer-text .creditos { font-size: 9px; }
+
+            #welcome-modal { width: 95%; max-height: 90vh; }
+            .modal-header { padding: 20px 20px 16px; }
+            .modal-body { padding: 18px 20px 16px; }
+            .modal-footer { padding: 0 20px 22px; }
+            .btn-entendido { padding: 12px 24px; width: 100%; }
         }
     </style>
 <base target="_blank">
 </head>
 <body>
+
+    <!-- ========== MODAL DE BIENVENIDA ========== -->
+    <div id="modal-overlay">
+        <div id="welcome-modal">
+            <div class="modal-header">
+                <div class="iconos-header">
+                    <div class="icono-circulo">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <div class="icono-circulo">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                </div>
+                <h2>Bienvenido al Sistema</h2>
+                <p>Atenciones Poder Judicial y CEM</p>
+            </div>
+
+            <div class="modal-body">
+                <!-- Objetivo Principal -->
+                <div class="objetivo-box">
+                    <div class="titulo-seccion">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a5276" stroke-width="2.5" stroke-linecap="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4"/>
+                            <path d="M12 8h.01"/>
+                        </svg>
+                        Objetivo Principal
+                    </div>
+                    <p>
+                        El objetivo del uso de este aplicativo es <strong>mejorar la calidad de registro</strong> de los pacientes atendidos con orden del <strong>Poder Judicial</strong> y el <strong>CEM</strong>, teniendo en cuenta que este tipo de atención es de manera <strong>directa bajo la orden de un Juez</strong>.
+                    </p>
+                </div>
+
+                <!-- Beneficios -->
+                <div class="beneficios-titulo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2e86ab" stroke-width="2.5" stroke-linecap="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Beneficios del Aplicativo
+                </div>
+
+                <div class="beneficio-item">
+                    <div class="beneficio-icono">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4>Monitoreo en Tiempo Real</h4>
+                        <p>Conocer en tiempo real la cantidad de pacientes registrados bajo este tipo de atención.</p>
+                    </div>
+                </div>
+
+                <div class="beneficio-item">
+                    <div class="beneficio-icono">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                            <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4>Identificación de Patrones</h4>
+                        <p>Identificar, en base a las atenciones registradas, qué diagnósticos son más frecuentes en estos casos.</p>
+                    </div>
+                </div>
+
+                <div class="beneficio-item">
+                    <div class="beneficio-icono">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4>Reportes Facilitados</h4>
+                        <p>Facilitar y tener el reporte completo de los pacientes bajo este tipo de atención de manera organizada.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-entendido" onclick="cerrarModal()">Entendido, continuar al login</button>
+                <p class="sub-footer">
+                    <span class="coordinacion">En coordinación con:</span><br>
+                    <span class="areas">Servicio Social · Estadística e Informática · Unidad de Seguros · Oficina de Desarrollo Institucional (Estrategia Salud Mental)</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== LOGIN ========== -->
     <div class="login-box">
         <div class="logo-container">
-            <img src="{{ url_for('static', filename='img/suladmental.png') }}" alt="Logo SULAD Mental" class="logo">
-            <img src="{{ url_for('static', filename='img/image.png') }}" alt="Logo" class="logo">
+            <img src="/img/suladmental.png" alt="Logo SULAD Mental" class="logo">
+            <img src="/img/image.png" alt="Logo" class="logo">
         </div>
         <h1>Atenciones Poder Judicial y CEM</h1>
         <p class="subtitle">Sistema de Registro de Pacientes</p>
@@ -95,13 +391,56 @@
         <p class="error" id="errorMsg"></p>
 
         <p class="footer-text">
-            ATENCIONES PODER JUDICIAL Y CEM<br>
+            <span class="linea-principal">ATENCIONES PODER JUDICIAL Y CEM</span><br>
             HERRAMIENTA DE APOYO<br>
-            UNIDAD DE SEGUROS
+            UNIDAD DE SEGUROS<br>
+            <span class="creditos">
+                Desarrollado por Juan C. Castillo Magallanes — Unidad de Seguros
+                <span class="ia-chip">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                        <rect x="4" y="4" width="16" height="16" rx="2"/>
+                        <rect x="9" y="9" width="6" height="6"/>
+                        <line x1="9" y1="1" x2="9" y2="4"/>
+                        <line x1="15" y1="1" x2="15" y2="4"/>
+                        <line x1="9" y1="20" x2="9" y2="23"/>
+                        <line x1="15" y1="20" x2="15" y2="23"/>
+                        <line x1="20" y1="9" x2="23" y2="9"/>
+                        <line x1="20" y1="14" x2="23" y2="14"/>
+                        <line x1="1" y1="9" x2="4" y2="9"/>
+                        <line x1="1" y1="14" x2="4" y2="14"/>
+                    </svg>
+                    I.A. asistida
+                </span>
+            </span>
         </p>
     </div>
 
     <script>
+        // Mostrar modal al cargar la página
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                document.getElementById('modal-overlay').classList.add('activo');
+            }, 300);
+        });
+
+        function cerrarModal() {
+            document.getElementById('modal-overlay').classList.remove('activo');
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModal();
+            }
+        });
+
+        // Cerrar con tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarModal();
+            }
+        });
+
         async function login() {
             const btn = document.getElementById('btnLogin');
             const errorMsg = document.getElementById('errorMsg');
