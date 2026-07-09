@@ -608,9 +608,12 @@
                     <input type="text" id="apellidosNombres" placeholder="PEREZ GARCIA, JUAN CARLOS" required>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>HCL (Historia Clinica)</label>
+                    <div class="form-group" id="grupoHCL">
+                        <label>HCL (Historia Clinica) <span id="hclRequired" style="color: #dc2626; display: none;">*</span></label>
                         <input type="text" id="hcl" placeholder="Numero de historia clinica">
+                        <div class="hint" id="hclHint" style="display: none; color: #dc2626; font-weight: 500;">
+                            ⚠️ Para indocumentados, el HCL es OBLIGATORIO como identificador unico
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Fecha de Nacimiento</label>
@@ -789,16 +792,32 @@
             const grupoNumDoc = document.getElementById('grupoNumDoc');
             const grupoCodigo = document.getElementById('grupoCodigoTemp');
             const numDoc = document.getElementById('numDoc');
+            const hclInput = document.getElementById('hcl');
+            const hclRequired = document.getElementById('hclRequired');
+            const hclHint = document.getElementById('hclHint');
 
             if (tipo === 'INDOCUMENTADO') {
                 grupoNumDoc.classList.add('disabled');
                 numDoc.value = '';
                 grupoCodigo.style.display = 'block';
                 generarCodigoTemporal();
+        
+                // HCL obligatorio para indocumentados
+                hclInput.required = true;
+                hclInput.placeholder = 'HCL OBLIGATORIO - Identificador unico';
+                hclRequired.style.display = 'inline';
+                hclHint.style.display = 'block';
+        
             } else {
                 grupoNumDoc.classList.remove('disabled');
                 grupoCodigo.style.display = 'none';
                 numDoc.placeholder = tipo === 'DNI' ? '8 digitos' : tipo === 'CE' ? '9 digitos' : 'Ingrese numero';
+        
+                // HCL opcional para documentados
+                hclInput.required = false;
+                hclInput.placeholder = 'Numero de historia clinica';
+                hclRequired.style.display = 'none';
+                hclHint.style.display = 'none';
             }
         }
 
@@ -869,6 +888,15 @@
                 const origen = document.getElementById('origen').value;
                 if (!origen) { showToast('error', 'Error', 'Seleccione origen'); return; }
 
+                // Validar HCL obligatorio para indocumentados
+                if (tipoDoc === 'INDOCUMENTADO') {
+                    const hcl = document.getElementById('hcl').value.trim();
+                    if (!hcl) {
+                        showToast('error', 'Error', 'Para pacientes indocumentados, el HCL es obligatorio como identificador unico');
+                        return;
+                    }
+                }
+
                 const data = {
                     tipo_documento: tipoDoc,
                     numero_documento: numDoc || null,
@@ -903,7 +931,13 @@
 
             } catch (e) {
                 console.error('Error:', e);
-                showToast('error', 'Error', e.message || 'No se pudo guardar el paciente');
+                // Si es error 409 (paciente duplicado), mostrar mensaje específico
+                if (e.message && e.message.includes('Ya existe')) {
+                    showToast('warning', 'Paciente ya registrado', e.message);
+                } else {
+                    showToast('error', 'Error', e.message || 'No se pudo guardar el paciente');
+                }
+            
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Guardar Paciente';

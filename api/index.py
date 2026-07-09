@@ -217,6 +217,44 @@ def create_paciente():
         return jsonify({'error': 'Sin conexion'}), 500
     try:
         data = request.get_json()
+        tipo_doc = data.get('tipo_documento')
+
+        # ========== VALIDACION ANTI-DUPLICADOS ==========
+        if tipo_doc == 'INDOCUMENTADO':
+            # Para indocumentados: validar por HCL (obligatorio y unico)
+            hcl = data.get('hcl', '').strip()
+            if not hcl:
+                return jsonify({'error': 'Para pacientes indocumentados, el HCL es obligatorio como identificador unico'}), 400
+            
+            existe = supabase_service.table('pac_pacientes')\
+                .select('id, apellidos_nombres, hcl')\
+                .eq('hcl', hcl)\
+                .execute()
+            if existe.data and len(existe.data) > 0:
+                p = existe.data[0]
+                return jsonify({
+                    'error': f"Ya existe un paciente indocumentado con HCL {hcl}: {p.get('apellidos_nombres', '')}",
+                    'paciente_existente': p
+                }), 409
+        else:
+            # Para documentados: validar por tipo_documento + numero_documento
+            num_doc = data.get('numero_documento', '').strip()
+            if not num_doc:
+                return jsonify({'error': f'El numero de {tipo_doc} es obligatorio'}), 400
+            
+            existe = supabase_service.table('pac_pacientes')\
+                .select('id, apellidos_nombres, tipo_documento, numero_documento')\
+                .eq('tipo_documento', tipo_doc)\
+                .eq('numero_documento', num_doc)\
+                .execute()
+            if existe.data and len(existe.data) > 0:
+                p = existe.data[0]
+                return jsonify({
+                    'error': f"Ya existe un paciente con {tipo_doc} {num_doc}: {p.get('apellidos_nombres', '')}",
+                    'paciente_existente': p
+                }), 409
+        # ========== FIN VALIDACION ==========
+
         if data.get('fecha_nacimiento'):
             try:
                 fecha_nac = datetime.strptime(data['fecha_nacimiento'], '%Y-%m-%d').date()
