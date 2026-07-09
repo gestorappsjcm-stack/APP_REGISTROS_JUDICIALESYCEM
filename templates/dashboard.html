@@ -579,13 +579,13 @@
             }
         }
 
-        // ==================== FORMULARIO REGISTRAR PACIENTE ====================
+// ==================== FORMULARIO REGISTRAR PACIENTE ====================
         function formRegistrarPaciente() {
             return `
                 <div class="form-row">
                     <div class="form-group">
                         <label>Tipo de Documento *</label>
-                        <select id="tipoDoc" required>
+                        <select id="tipoDoc" required onchange="handleTipoDocChange(); verificarDuplicadoPaciente();">
                             <option value="">Seleccione...</option>
                             <option value="DNI">DNI</option>
                             <option value="CE">CE</option>
@@ -595,7 +595,10 @@
                     </div>
                     <div class="form-group" id="grupoNumDoc">
                         <label>Numero de Documento *</label>
-                        <input type="text" id="numDoc" placeholder="Ingrese numero">
+                        <input type="text" id="numDoc" placeholder="Ingrese numero" 
+                            onblur="verificarDuplicadoPaciente()" 
+                            onkeyup="if(event.key==='Enter') verificarDuplicadoPaciente()">
+                        <div id="duplicadoMensaje" style="display: none; margin-top: 6px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;"></div>
                     </div>
                 </div>
                 <div class="form-group" id="grupoCodigoTemp" style="display:none;">
@@ -610,10 +613,11 @@
                 <div class="form-row">
                     <div class="form-group" id="grupoHCL">
                         <label>HCL (Historia Clinica) <span id="hclRequired" style="color: #dc2626; display: none;">*</span></label>
-                        <input type="text" id="hcl" placeholder="Numero de historia clinica">
+                        <input type="text" id="hcl" placeholder="Numero de historia clinica" onblur="verificarDuplicadoPaciente()">
                         <div class="hint" id="hclHint" style="display: none; color: #dc2626; font-weight: 500;">
                             ⚠️ Para indocumentados, el HCL es OBLIGATORIO como identificador unico
                         </div>
+                        <div id="duplicadoMensajeHCL" style="display: none; margin-top: 6px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;"></div>
                     </div>
                     <div class="form-group">
                         <label>Fecha de Nacimiento</label>
@@ -684,6 +688,86 @@
                     <button class="btn-primary" id="btnGuardarPaciente" onclick="guardarPaciente()">Guardar Paciente</button>
                 </div>
             `;
+        }
+
+        // Variable global para controlar si hay duplicado
+        let pacienteDuplicadoDetectado = false;
+
+        async function verificarDuplicadoPaciente() {
+            const tipoDoc = document.getElementById('tipoDoc').value;
+            const mensajeDiv = document.getElementById('duplicadoMensaje');
+            const mensajeHCL = document.getElementById('duplicadoMensajeHCL');
+            const btnGuardar = document.getElementById('btnGuardarPaciente');
+    
+            // Limpiar mensajes previos
+            if (mensajeDiv) {
+                mensajeDiv.style.display = 'none';
+                mensajeDiv.textContent = '';
+            }
+            if (mensajeHCL) {
+                mensajeHCL.style.display = 'none';
+                mensajeHCL.textContent = '';
+            }
+    
+            pacienteDuplicadoDetectado = false;
+            if (btnGuardar) {
+                btnGuardar.disabled = false;
+                btnGuardar.style.opacity = '1';
+                btnGuardar.style.cursor = 'pointer';
+            }
+    
+            // No verificar si no hay tipo de documento seleccionado
+            if (!tipoDoc) return;
+    
+            try {
+                let url = '';
+        
+                if (tipoDoc === 'INDOCUMENTADO') {
+                    const hcl = document.getElementById('hcl')?.value.trim();
+                    if (!hcl || hcl.length < 2) return;
+                    url = `/api/pacientes/verificar-duplicado?tipo=INDOCUMENTADO&hcl=${encodeURIComponent(hcl)}`;
+                } else {
+                    const numDoc = document.getElementById('numDoc')?.value.trim();
+                    if (!numDoc || numDoc.length < 2) return;
+                    if (tipoDoc === 'DNI' && numDoc.length !== 8) return;
+                    if (tipoDoc === 'CE' && numDoc.length !== 9) return;
+                    url = `/api/pacientes/verificar-duplicado?tipo=${encodeURIComponent(tipoDoc)}&numero=${encodeURIComponent(numDoc)}`;
+                }
+        
+                const response = await fetch(url);
+                const result = await response.json();
+        
+                if (result.existe && result.paciente) {
+                    pacienteDuplicadoDetectado = true;
+                    const p = result.paciente;
+                    const mensaje = `⚠️ YA REGISTRADO: ${p.apellidos_nombres || 'Paciente existente'} | ${p.tipo_documento}: ${p.numero_documento || p.codigo_temporal || '-'} | HCL: ${p.hcl || '-'} | Estado: ${p.estado || '-'}`;
+            
+                    if (tipoDoc === 'INDOCUMENTADO' && mensajeHCL) {
+                        mensajeHCL.textContent = mensaje;
+                        mensajeHCL.style.display = 'block';
+                        mensajeHCL.style.background = '#fef3c7';
+                        mensajeHCL.style.color = '#92400e';
+                        mensajeHCL.style.border = '1px solid #f59e0b';
+                    } else if (mensajeDiv) {
+                        mensajeDiv.textContent = mensaje;
+                        mensajeDiv.style.display = 'block';
+                        mensajeDiv.style.background = '#fef3c7';
+                        mensajeDiv.style.color = '#92400e';
+                        mensajeDiv.style.border = '1px solid #f59e0b';
+                    }
+            
+                    if (btnGuardar) {
+                        btnGuardar.disabled = true;
+                        btnGuardar.style.opacity = '0.5';
+                        btnGuardar.style.cursor = 'not-allowed';
+                    }
+            
+                    showToast('warning', 'Paciente ya registrado', `Ya existe: ${p.apellidos_nombres || ''}`);
+                }
+        
+            } catch (e) {
+                console.error('Error verificando duplicado:', e);
+            }
         }
 
         function formEditarPaciente(p) {
@@ -795,6 +879,19 @@
             const hclInput = document.getElementById('hcl');
             const hclRequired = document.getElementById('hclRequired');
             const hclHint = document.getElementById('hclHint');
+            const mensajeDiv = document.getElementById('duplicadoMensaje');
+            const mensajeHCL = document.getElementById('duplicadoMensajeHCL');
+
+            // Limpiar mensajes al cambiar tipo
+            if (mensajeDiv) { mensajeDiv.style.display = 'none'; mensajeDiv.textContent = ''; }
+            if (mensajeHCL) { mensajeHCL.style.display = 'none'; mensajeHCL.textContent = ''; }
+            pacienteDuplicadoDetectado = false;
+            const btnGuardar = document.getElementById('btnGuardarPaciente');
+            if (btnGuardar) {
+                btnGuardar.disabled = false;
+                btnGuardar.style.opacity = '1';
+                btnGuardar.style.cursor = 'pointer';
+            }
 
             if (tipo === 'INDOCUMENTADO') {
                 grupoNumDoc.classList.add('disabled');
@@ -802,22 +899,26 @@
                 grupoCodigo.style.display = 'block';
                 generarCodigoTemporal();
         
-                // HCL obligatorio para indocumentados
                 hclInput.required = true;
                 hclInput.placeholder = 'HCL OBLIGATORIO - Identificador unico';
                 hclRequired.style.display = 'inline';
                 hclHint.style.display = 'block';
+        
+                // Verificar duplicado si ya hay HCL escrito
+                if (hclInput.value.trim()) verificarDuplicadoPaciente();
         
             } else {
                 grupoNumDoc.classList.remove('disabled');
                 grupoCodigo.style.display = 'none';
                 numDoc.placeholder = tipo === 'DNI' ? '8 digitos' : tipo === 'CE' ? '9 digitos' : 'Ingrese numero';
         
-                // HCL opcional para documentados
                 hclInput.required = false;
                 hclInput.placeholder = 'Numero de historia clinica';
                 hclRequired.style.display = 'none';
                 hclHint.style.display = 'none';
+        
+                // Verificar duplicado si ya hay número escrito
+                if (numDoc.value.trim()) verificarDuplicadoPaciente();
             }
         }
 
@@ -864,6 +965,10 @@
         }
 
         async function guardarPaciente() {
+            if (pacienteDuplicadoDetectado) {
+                    showToast('error', 'Error', 'No se puede guardar: el paciente ya está registrado. Verifique el documento ingresado.');
+                    return;
+                }
             const btn = document.getElementById('btnGuardarPaciente');
             btn.disabled = true;
             btn.textContent = 'Guardando...';
