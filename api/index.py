@@ -194,6 +194,51 @@ def atenciones_por_mes():
         return jsonify({'error': str(e)}), 500
 
 # ============================================
+# API - VERIFICAR DUPLICADOS (TIEMPO REAL)
+# ============================================
+
+@app.route('/api/pacientes/verificar-duplicado', methods=['GET'])
+def verificar_duplicado_paciente():
+    """Endpoint para verificación en tiempo real de duplicados al registrar pacientes."""
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    try:
+        tipo = request.args.get('tipo', '').strip().upper()
+        numero = request.args.get('numero', '').strip()
+        hcl = request.args.get('hcl', '').strip()
+        
+        if tipo == 'INDOCUMENTADO':
+            if not hcl:
+                return jsonify({'existe': False})
+            existe = supabase_service.table('pac_pacientes')\
+                .select('id, apellidos_nombres, tipo_documento, hcl, estado, codigo_temporal')\
+                .eq('hcl', hcl).execute()
+            if existe.data and len(existe.data) > 0:
+                p = existe.data[0]
+                return jsonify({'existe': True, 'paciente': {
+                    'id': p.get('id'), 'apellidos_nombres': p.get('apellidos_nombres'),
+                    'tipo_documento': p.get('tipo_documento'), 'codigo_temporal': p.get('codigo_temporal'),
+                    'hcl': p.get('hcl'), 'estado': p.get('estado')
+                }})
+            return jsonify({'existe': False})
+        else:
+            if not tipo or not numero:
+                return jsonify({'existe': False})
+            existe = supabase_service.table('pac_pacientes')\
+                .select('id, apellidos_nombres, tipo_documento, numero_documento, hcl, estado')\
+                .eq('tipo_documento', tipo).eq('numero_documento', numero).execute()
+            if existe.data and len(existe.data) > 0:
+                p = existe.data[0]
+                return jsonify({'existe': True, 'paciente': {
+                    'id': p.get('id'), 'apellidos_nombres': p.get('apellidos_nombres'),
+                    'tipo_documento': p.get('tipo_documento'), 'numero_documento': p.get('numero_documento'),
+                    'hcl': p.get('hcl'), 'estado': p.get('estado')
+                }})
+            return jsonify({'existe': False})
+    except Exception as e:
+        return jsonify({'existe': False, 'error': str(e)}), 500
+
+# ============================================
 # API - PACIENTES (CRUD)
 # ============================================
 
