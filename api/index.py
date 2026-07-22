@@ -975,6 +975,43 @@ def buscar_diagnosticos():
         return jsonify({'data': response.data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# ============================================
+# API - DATOS PERSONALES POR DNI (RENIEC)
+# ============================================
+
+@app.route('/api/pacientes/datos-personales/<dni>')
+def get_datos_personales(dni):
+    """Busca datos personales en la tabla de referencia RENIEC.
+    
+    Usa supabase_service (Service Role Key) para leer la tabla
+    pac_datos_personales que tiene RLS activado.
+    
+    La tabla se vacía y recarga mensualmente con datos actualizados.
+    """
+    # Verificar conexión Service Role
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    
+    try:
+        # Validar que sea DNI numérico de 8 dígitos
+        if not dni or not dni.isdigit() or len(dni) != 8:
+            return jsonify({'success': False, 'error': 'DNI inválido'}), 400
+
+        # Usar SERVICE ROLE para leer tabla con RLS activado
+        response = supabase_service.table('pac_datos_personales')\
+            .select('dni, apellidos_nombres, fecha_nacimiento, sexo')\
+            .eq('dni', dni)\
+            .limit(1)\
+            .execute()
+        
+        if response.data and len(response.data) > 0:
+            return jsonify({'success': True, 'data': response.data[0]})
+        else:
+            return jsonify({'success': False, 'message': 'DNI no encontrado'}), 404
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # ENTRY POINT PARA VERCEL
