@@ -1269,6 +1269,7 @@
         // ==================== FORMULARIO REGISTRAR ATENCION (con Pacientes Citados Hoy) ====================
         let pacienteSeleccionadoAtencion = null;
         let diagnosticosSeleccionados = [];
+        let procedimientosSeleccionados = [];
 
         function formRegistrarAtencion() {
             return `
@@ -1360,6 +1361,16 @@
                             <div id="resultadosDiagnosticos"></div>
                             <div id="diagnosticosSeleccionados" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
                             <input type="hidden" id="diagnosticoAtencion" required>
+                        </div>
+
+                        <!-- PROCEDIMIENTOS REALIZADOS -->
+                        <div class="form-group">
+                            <label>Procedimientos Realizados</label>
+                            <input type="text" id="buscarProcedimiento" placeholder="Buscar por CPMS o descripcion..." onkeyup="buscarProcedimientos()" autocomplete="off">
+                            <div class="hint">Los procedimientos se filtran segun los diagnosticos seleccionados</div>
+                            <div id="resultadosProcedimientos"></div>
+                            <div id="procedimientosSeleccionados" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
+                            <input type="hidden" id="procedimientosAtencion">
                         </div>
 
                         <div class="form-group">
@@ -1629,7 +1640,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                 let html = '<div style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; max-height: 200px; overflow-y: auto;">';
                 result.data.forEach(d => {
                     const esCapitado = d.percapita === 'CAPITADO';
-                    const badgeText = esCapitado ? '🟢 CAPITADO' : '⚪ NO CAPITADO';
+                    const badgeText = esCapitado ? '🔴 CAPITADO' : '⚪ NO CAPITADO';
 
                     html += `
                         <div onclick="seleccionarDiagnostico('${d.codigo}', '${(d.nombre || '').replace(/'/g, "\'")}', '${d.percapita}')" 
@@ -1639,7 +1650,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                                 <div style="font-weight: 600; font-size: 13px;">${d.codigo}</div>
                                 <div style="font-size: 12px; color: var(--text-muted);">${d.nombre || ''}</div>
                             </div>
-                            <span style="font-size: 10px; padding: 3px 8px; border-radius: 100px; font-weight: 600; white-space: nowrap; ${esCapitado ? 'background: #d1fae5; color: #166534;' : 'background: #f1f5f9; color: #64748b;'}">${badgeText}</span>
+                            <span style="font-size: 10px; padding: 3px 8px; border-radius: 100px; font-weight: 600; white-space: nowrap; ${esCapitado ? 'background: #fee2e2; color: #991b1b;' : 'background: #f1f5f9; color: #64748b;'}">${badgeText}</span>
                         </div>
                     `;
                 });
@@ -1681,7 +1692,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
             diagnosticosSeleccionados.forEach(d => {
                 const esCapitado = d.percapita === 'CAPITADO';
                 const badgeStyle = esCapitado 
-                    ? 'background: #d1fae5; color: #166534;' 
+                    ? 'background: #fee2e2; color: #991b1b;' 
                     : 'background: #f1f5f9; color: #64748b;';
 
                 html += `
@@ -1698,6 +1709,112 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
 
             container.innerHTML = html;
             hiddenInput.value = JSON.stringify(diagnosticosSeleccionados.map(d => `${d.codigo} - ${d.nombre}`).join('; '));
+        }
+
+        // ==================== PROCEDIMIENTOS ====================
+        async function buscarProcedimientos() {
+            const query = document.getElementById('buscarProcedimiento').value.trim();
+            const resultadosDiv = document.getElementById('resultadosProcedimientos');
+
+            // Obtener diagnosticos seleccionados para filtrar procedimientos
+            const diagnosticosCodes = diagnosticosSeleccionados.map(d => d.codigo).join(',');
+
+            if (query.length < 2) {
+                resultadosDiv.innerHTML = '';
+                return;
+            }
+
+            try {
+                const url = `/api/procedimientos?q=${encodeURIComponent(query)}&diagnosticos=${encodeURIComponent(diagnosticosCodes)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Error al buscar');
+                const result = await response.json();
+
+                if (!result.data || result.data.length === 0) {
+                    resultadosDiv.innerHTML = '<p style="color: var(--text-muted); padding: 8px; font-size: 12px;">No se encontraron procedimientos</p>';
+                    return;
+                }
+
+                let html = '<div style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; max-height: 200px; overflow-y: auto;">';
+                result.data.forEach(p => {
+                    const estrategiaBadge = p.estrategia_sis === 'A' ? 'A' : 
+                                           p.estrategia_sis === 'S' ? 'S' : 'E';
+                    const estrategiaStyle = p.estrategia_sis === 'A' ? 'background: #dbeafe; color: #1e40af;' : 
+                                            p.estrategia_sis === 'S' ? 'background: #d1fae5; color: #166534;' : 
+                                            'background: #fef3c7; color: #92400e;';
+                    const condicionBadge = p.condicion === 'Z133' ? '⚡ Z133' : '📋 TODOS';
+                    const condicionStyle = p.condicion === 'Z133' ? 'background: #fee2e2; color: #991b1b;' : 'background: #f1f5f9; color: #64748b;';
+
+                    html += `
+                        <div onclick="seleccionarProcedimiento('${p.cpms}', '${(p.descripcion || '').replace(/'/g, "\'")}', '${p.estrategia_sis}', '${p.condicion}')" 
+                            style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;"
+                            onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                            <div>
+                                <div style="font-weight: 600; font-size: 13px;">${p.cpms}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">${p.descripcion || ''}</div>
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <span style="font-size: 10px; padding: 3px 8px; border-radius: 100px; font-weight: 600; ${estrategiaStyle}">${estrategiaBadge}</span>
+                                <span style="font-size: 10px; padding: 3px 8px; border-radius: 100px; font-weight: 600; ${condicionStyle}">${condicionBadge}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                resultadosDiv.innerHTML = html;
+
+            } catch (e) {
+                resultadosDiv.innerHTML = `<p style="color: var(--danger); padding: 8px; font-size: 12px;">Error: ${e.message}</p>`;
+            }
+        }
+
+        function seleccionarProcedimiento(cpms, descripcion, estrategia, condicion) {
+            if (procedimientosSeleccionados.find(p => p.cpms === cpms)) {
+                showToast('warning', 'Atencion', 'Este procedimiento ya fue seleccionado');
+                return;
+            }
+            procedimientosSeleccionados.push({ cpms, descripcion, estrategia, condicion });
+            actualizarListaProcedimientos();
+            document.getElementById('buscarProcedimiento').value = '';
+            document.getElementById('resultadosProcedimientos').innerHTML = '';
+        }
+
+        function eliminarProcedimiento(cpms) {
+            procedimientosSeleccionados = procedimientosSeleccionados.filter(p => p.cpms !== cpms);
+            actualizarListaProcedimientos();
+        }
+
+        function actualizarListaProcedimientos() {
+            const container = document.getElementById('procedimientosSeleccionados');
+            const hiddenInput = document.getElementById('procedimientosAtencion');
+
+            if (procedimientosSeleccionados.length === 0) {
+                container.innerHTML = '';
+                hiddenInput.value = '';
+                return;
+            }
+
+            let html = '';
+            procedimientosSeleccionados.forEach(p => {
+                const estrategiaStyle = p.estrategia === 'A' ? 'background: #dbeafe; color: #1e40af;' : 
+                                       p.estrategia === 'S' ? 'background: #d1fae5; color: #166534;' : 
+                                       'background: #fef3c7; color: #92400e;';
+
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                        <div>
+                            <strong style="font-size: 13px;">${p.cpms}</strong>
+                            <span style="font-size: 13px; color: var(--text); margin-left: 8px;">${p.descripcion}</span>
+                            <span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; margin-left: 8px; ${estrategiaStyle}">${p.estrategia}</span>
+                            ${p.condicion === 'Z133' ? '<span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; margin-left: 4px; background: #fee2e2; color: #991b1b;">Z133</span>' : ''}
+                        </div>
+                        <button type="button" onclick="eliminarProcedimiento('${p.cpms}')" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 4px;">×</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            hiddenInput.value = JSON.stringify(procedimientosSeleccionados.map(p => `${p.cpms} - ${p.descripcion}`).join('; '));
         }
 
         async function guardarAtencion() {
@@ -1725,6 +1842,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     fecha_atencion: fechaAtencion,
                     motivo: document.getElementById('motivoAtencion').value.trim() || null,
                     diagnostico: diagnosticosSeleccionados.map(d => `${d.codigo} - ${d.nombre}`).join('; '),
+                    procedimientos: procedimientosSeleccionados.map(p => `${p.cpms} - ${p.descripcion}`).join('; ') || null,
                     tratamiento: document.getElementById('tratamientoAtencion').value.trim() || null,
                     pa: document.getElementById('paAtencion').value.trim() || null,
                     fc: document.getElementById('fcAtencion').value ? parseInt(document.getElementById('fcAtencion').value) : null,
@@ -1753,6 +1871,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                 showToast('success', 'Éxito', msg);
 
                 diagnosticosSeleccionados = [];
+                procedimientosSeleccionados = [];
                 closeModal();
                 cargarStats();
                 cargarGrafico();

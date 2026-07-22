@@ -194,6 +194,84 @@ def atenciones_por_mes():
         return jsonify({'error': str(e)}), 500
 
 # ============================================
+# API - DATOS PERSONALES POR DNI (RENIEC)
+# ============================================
+
+@app.route('/api/pacientes/datos-personales/<dni>')
+def get_datos_personales(dni):
+    """Busca datos personales en la tabla de referencia RENIEC.
+
+    Usa supabase_service (Service Role Key) para leer la tabla
+    pac_datos_personales que tiene RLS activado.
+
+    La tabla se vacía y recarga mensualmente con datos actualizados.
+    """
+    # Verificar conexión Service Role
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+
+    try:
+        # Validar que sea DNI numérico de 8 dígitos
+        if not dni or not dni.isdigit() or len(dni) != 8:
+            return jsonify({'success': False, 'error': 'DNI inválido'}), 400
+
+        # Usar SERVICE ROLE para leer tabla con RLS activado
+        response = supabase_service.table('pac_datos_personales')            .select('dni, apellidos_nombres, fecha_nacimiento, sexo')            .eq('dni', dni)            .limit(1)            .execute()
+
+        if response.data and len(response.data) > 0:
+            return jsonify({'success': True, 'data': response.data[0]})
+        else:
+            return jsonify({'success': False, 'message': 'DNI no encontrado'}), 404
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# API - PROCEDIMIENTOS
+# ============================================
+
+@app.route('/api/procedimientos')
+def buscar_procedimientos():
+    """Busca procedimientos filtrados por diagnósticos seleccionados.
+
+    Reglas:
+    - condicion='TODOS': aparece con cualquier diagnóstico
+    - condicion='Z133': solo aparece si Z133 está en diagnósticos seleccionados
+    - 99402.09 es excepción: está en ambas categorías
+    """
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    try:
+        query = request.args.get('q', '').strip()
+        diagnosticos = request.args.get('diagnosticos', '').strip()
+
+        # Construir query base
+        db_query = supabase_service.table('pac_procedimientos').select('*')
+
+        if query:
+            db_query = db_query.or_(f"cpms.ilike.%{query}%,descripcion.ilike.%{query}%")
+
+        # Filtrar por condición según diagnósticos seleccionados
+        diagnosticos_list = [d.strip() for d in diagnosticos.split(',') if d.strip()]
+        tiene_z133 = 'Z133' in diagnosticos_list
+
+        if diagnosticos_list:
+            # Si tiene Z133, mostrar TODOS + Z133
+            # Si NO tiene Z133, mostrar solo TODOS
+            if tiene_z133:
+                db_query = db_query.in_('condicion', ['TODOS', 'Z133'])
+            else:
+                db_query = db_query.eq('condicion', 'TODOS')
+        else:
+            # Sin diagnósticos seleccionados, mostrar solo TODOS
+            db_query = db_query.eq('condicion', 'TODOS')
+
+        response = db_query.limit(20).execute()
+        return jsonify({'data': response.data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
 # API - VERIFICAR DUPLICADOS (TIEMPO REAL)
 # ============================================
 
@@ -206,13 +284,11 @@ def verificar_duplicado_paciente():
         tipo = request.args.get('tipo', '').strip().upper()
         numero = request.args.get('numero', '').strip()
         hcl = request.args.get('hcl', '').strip()
-        
+
         if tipo == 'INDOCUMENTADO':
             if not hcl:
                 return jsonify({'existe': False})
-            existe = supabase_service.table('pac_pacientes')\
-                .select('id, apellidos_nombres, tipo_documento, hcl, estado, codigo_temporal')\
-                .eq('hcl', hcl).execute()
+            existe = supabase_service.table('pac_pacientes')                .select('id, apellidos_nombres, tipo_documento, hcl, estado, codigo_temporal')                .eq('hcl', hcl).execute()
             if existe.data and len(existe.data) > 0:
                 p = existe.data[0]
                 return jsonify({'existe': True, 'paciente': {
@@ -224,9 +300,7 @@ def verificar_duplicado_paciente():
         else:
             if not tipo or not numero:
                 return jsonify({'existe': False})
-            existe = supabase_service.table('pac_pacientes')\
-                .select('id, apellidos_nombres, tipo_documento, numero_documento, hcl, estado')\
-                .eq('tipo_documento', tipo).eq('numero_documento', numero).execute()
+            existe = supabase_service.table('pac_pacientes')                .select('id, apellidos_nombres, tipo_documento, numero_documento, hcl, estado')                .eq('tipo_documento', tipo).eq('numero_documento', numero).execute()
             if existe.data and len(existe.data) > 0:
                 p = existe.data[0]
                 return jsonify({'existe': True, 'paciente': {
@@ -266,15 +340,11 @@ def create_paciente():
 
         # ========== VALIDACION ANTI-DUPLICADOS ==========
         if tipo_doc == 'INDOCUMENTADO':
-            # Para indocumentados: validar por HCL (obligatorio y unico)
             hcl = data.get('hcl', '').strip()
             if not hcl:
                 return jsonify({'error': 'Para pacientes indocumentados, el HCL es obligatorio como identificador unico'}), 400
-            
-            existe = supabase_service.table('pac_pacientes')\
-                .select('id, apellidos_nombres, hcl')\
-                .eq('hcl', hcl)\
-                .execute()
+
+            existe = supabase_service.table('pac_pacientes')                .select('id, apellidos_nombres, hcl')                .eq('hcl', hcl)                .execute()
             if existe.data and len(existe.data) > 0:
                 p = existe.data[0]
                 return jsonify({
@@ -282,16 +352,11 @@ def create_paciente():
                     'paciente_existente': p
                 }), 409
         else:
-            # Para documentados: validar por tipo_documento + numero_documento
             num_doc = data.get('numero_documento', '').strip()
             if not num_doc:
                 return jsonify({'error': f'El numero de {tipo_doc} es obligatorio'}), 400
-            
-            existe = supabase_service.table('pac_pacientes')\
-                .select('id, apellidos_nombres, tipo_documento, numero_documento')\
-                .eq('tipo_documento', tipo_doc)\
-                .eq('numero_documento', num_doc)\
-                .execute()
+
+            existe = supabase_service.table('pac_pacientes')                .select('id, apellidos_nombres, tipo_documento, numero_documento')                .eq('tipo_documento', tipo_doc)                .eq('numero_documento', num_doc)                .execute()
             if existe.data and len(existe.data) > 0:
                 p = existe.data[0]
                 return jsonify({
@@ -959,9 +1024,26 @@ def ficha_paciente(id):
         paciente = paciente_resp.data
         if not paciente:
             return "Paciente no encontrado", 404
+
+        # Calcular edad desde fecha_nacimiento
+        edad = None
+        if paciente.get('fecha_nacimiento'):
+            try:
+                fecha_nac = datetime.strptime(paciente['fecha_nacimiento'], '%Y-%m-%d').date()
+                hoy = date.today()
+                edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
+            except:
+                pass
+
         atenciones_resp = supabase.table('pac_atenciones').select('*').eq('paciente_id', id).order('fecha_atencion', desc=True).execute()
         es_print = request.args.get('print') == '1'
-        return render_template('ficha_paciente.html', paciente=paciente, atenciones=atenciones_resp.data or [], user=session['user'], es_print=es_print)
+
+        return render_template('ficha_paciente.html', 
+                               paciente=paciente, 
+                               atenciones=atenciones_resp.data or [], 
+                               user=session['user'], 
+                               es_print=es_print,
+                               edad=edad)
     except Exception as e:
         return f"Error: {str(e)}", 500
 
@@ -975,43 +1057,6 @@ def buscar_diagnosticos():
         return jsonify({'data': response.data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-# ============================================
-# API - DATOS PERSONALES POR DNI (RENIEC)
-# ============================================
-
-@app.route('/api/pacientes/datos-personales/<dni>')
-def get_datos_personales(dni):
-    """Busca datos personales en la tabla de referencia RENIEC.
-    
-    Usa supabase_service (Service Role Key) para leer la tabla
-    pac_datos_personales que tiene RLS activado.
-    
-    La tabla se vacía y recarga mensualmente con datos actualizados.
-    """
-    # Verificar conexión Service Role
-    if supabase_service is None:
-        return jsonify({'error': 'Sin conexion'}), 500
-    
-    try:
-        # Validar que sea DNI numérico de 8 dígitos
-        if not dni or not dni.isdigit() or len(dni) != 8:
-            return jsonify({'success': False, 'error': 'DNI inválido'}), 400
-
-        # Usar SERVICE ROLE para leer tabla con RLS activado
-        response = supabase_service.table('pac_datos_personales')\
-            .select('dni, apellidos_nombres, fecha_nacimiento, sexo')\
-            .eq('dni', dni)\
-            .limit(1)\
-            .execute()
-        
-        if response.data and len(response.data) > 0:
-            return jsonify({'success': True, 'data': response.data[0]})
-        else:
-            return jsonify({'success': False, 'message': 'DNI no encontrado'}), 404
-            
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================
 # ENTRY POINT PARA VERCEL
