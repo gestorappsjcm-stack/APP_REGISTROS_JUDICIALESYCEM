@@ -281,6 +281,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <nav class="navbar">
@@ -1364,10 +1365,22 @@
                         </div>
 
                         <!-- PROCEDIMIENTOS REALIZADOS -->
+                        <!-- CAMBIO: Leyenda de estrategias/SIS agregada -->
                         <div class="form-group">
                             <label>Procedimientos Realizados</label>
                             <input type="text" id="buscarProcedimiento" placeholder="Buscar por CPMS o descripcion..." onkeyup="buscarProcedimientos()" autocomplete="off">
-                            <div class="hint">Los procedimientos se filtran segun los diagnosticos seleccionados</div>
+                            <!-- CAMBIO: Leyenda de estrategias/SIS -->
+                            <div style="display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap;">
+                                <span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; background: #dbeafe; color: #1e40af; font-weight: 600;">A = Ambos tipos de registros</span>
+                                <span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; background: #d1fae5; color: #166534; font-weight: 600;">S = Registros SIS</span>
+                                <span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; background: #fef3c7; color: #92400e; font-weight: 600;">E = Registros Estrategias</span>
+                                <span style="font-size: 10px; padding: 2px 8px; border-radius: 100px; background: #fee2e2; color: #991b1b; font-weight: 600;">Z133 = Exclusivo Z133</span>
+                            </div>
+                            <div class="hint" id="procedimientosHint">Los procedimientos se filtran segun los diagnosticos seleccionados</div>
+                            <!-- CAMBIO: Alerta Z133 dinámica -->
+                            <div id="alertaZ133" style="display: none; margin-top: 6px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; background: #fee2e2; color: #991b1b; border: 1px solid #ef4444;">
+                                ⚠️ Algunos procedimientos requieren el diagnóstico Z133. Agregue primero el diagnóstico Z133.
+                            </div>
                             <div id="resultadosProcedimientos"></div>
                             <div id="procedimientosSeleccionados" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;"></div>
                             <input type="hidden" id="procedimientosAtencion">
@@ -1715,12 +1728,18 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
         async function buscarProcedimientos() {
             const query = document.getElementById('buscarProcedimiento').value.trim();
             const resultadosDiv = document.getElementById('resultadosProcedimientos');
+            const alertaZ133 = document.getElementById('alertaZ133');
 
             // Obtener diagnosticos seleccionados para filtrar procedimientos
             const diagnosticosCodes = diagnosticosSeleccionados.map(d => d.codigo).join(',');
 
+            // CAMBIO: Verificar si hay diagnostico Z133 seleccionado
+            const tieneZ133 = diagnosticosSeleccionados.some(d => d.codigo && d.codigo.startsWith('Z133'));
+
             if (query.length < 2) {
                 resultadosDiv.innerHTML = '';
+                // CAMBIO: Ocultar alerta si no hay busqueda activa
+                if (alertaZ133) alertaZ133.style.display = 'none';
                 return;
             }
 
@@ -1732,7 +1751,18 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
 
                 if (!result.data || result.data.length === 0) {
                     resultadosDiv.innerHTML = '<p style="color: var(--text-muted); padding: 8px; font-size: 12px;">No se encontraron procedimientos</p>';
+                    if (alertaZ133) alertaZ133.style.display = 'none';
                     return;
+                }
+
+                // CAMBIO: Verificar si hay procedimientos Z133 en los resultados y mostrar alerta
+                const hayZ133EnResultados = result.data.some(p => p.condicion === 'Z133');
+                if (alertaZ133) {
+                    if (hayZ133EnResultados && !tieneZ133) {
+                        alertaZ133.style.display = 'block';
+                    } else {
+                        alertaZ133.style.display = 'none';
+                    }
                 }
 
                 let html = '<div style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; max-height: 200px; overflow-y: auto;">';
@@ -1742,15 +1772,21 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     const estrategiaStyle = p.estrategia_sis === 'A' ? 'background: #dbeafe; color: #1e40af;' : 
                                             p.estrategia_sis === 'S' ? 'background: #d1fae5; color: #166534;' : 
                                             'background: #fef3c7; color: #92400e;';
+                    // CAMBIO: Badge condicion mejorado
                     const condicionBadge = p.condicion === 'Z133' ? '⚡ Z133' : '📋 TODOS';
-                    const condicionStyle = p.condicion === 'Z133' ? 'background: #fee2e2; color: #991b1b;' : 'background: #f1f5f9; color: #64748b;';
+                    const condicionStyle = p.condicion === 'Z133' ? 'background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;' : 'background: #f1f5f9; color: #64748b;';
+                    // CAMBIO: Deshabilitar visualmente si es Z133 y no tiene diagnostico Z133
+                    const isDisabled = (p.condicion === 'Z133' && !tieneZ133);
+                    const opacityStyle = isDisabled ? 'opacity: 0.5; cursor: not-allowed;' : 'cursor: pointer;';
+                    const onclickAttr = isDisabled ? '' : `onclick="seleccionarProcedimiento('${p.cpms}', '${(p.descripcion || '').replace(/'/g, "\'")}', '${p.estrategia_sis}', '${p.condicion}')"`;
+                    const warningIcon = isDisabled ? '<span style="font-size: 11px; color: #991b1b; margin-left: 8px;">🔒 Requiere Z133</span>' : '';
 
                     html += `
-                        <div onclick="seleccionarProcedimiento('${p.cpms}', '${(p.descripcion || '').replace(/'/g, "\'")}', '${p.estrategia_sis}', '${p.condicion}')" 
-                            style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.2s; display: flex; justify-content: space-between; align-items: center;"
-                            onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                        <div ${onclickAttr}
+                            style="padding: 10px 14px; border-bottom: 1px solid var(--border); transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; ${opacityStyle}"
+                            onmouseover="if(!${isDisabled}) this.style.background='var(--bg')" onmouseout="if(!${isDisabled}) this.style.background=''">
                             <div>
-                                <div style="font-weight: 600; font-size: 13px;">${p.cpms}</div>
+                                <div style="font-weight: 600; font-size: 13px;">${p.cpms}${warningIcon}</div>
                                 <div style="font-size: 12px; color: var(--text-muted);">${p.descripcion || ''}</div>
                             </div>
                             <div style="display: flex; gap: 6px;">
@@ -1765,10 +1801,20 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
 
             } catch (e) {
                 resultadosDiv.innerHTML = `<p style="color: var(--danger); padding: 8px; font-size: 12px;">Error: ${e.message}</p>`;
+                if (alertaZ133) alertaZ133.style.display = 'none';
             }
         }
 
         function seleccionarProcedimiento(cpms, descripcion, estrategia, condicion) {
+            // CAMBIO: Validacion Z133 - Si el procedimiento es EXCLUSIVO de Z133
+            if (condicion === 'Z133') {
+                const tieneZ133 = diagnosticosSeleccionados.some(d => d.codigo && d.codigo.startsWith('Z133'));
+                if (!tieneZ133) {
+                    showToast('error', 'Diagnostico Z133 requerido', 
+                        'El procedimiento ' + cpms + ' requiere el diagnostico Z133. Por favor, agregue primero el diagnostico Z133.');
+                    return;
+                }
+            }
             if (procedimientosSeleccionados.find(p => p.cpms === cpms)) {
                 showToast('warning', 'Atencion', 'Este procedimiento ya fue seleccionado');
                 return;
