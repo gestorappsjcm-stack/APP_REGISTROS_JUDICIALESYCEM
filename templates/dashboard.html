@@ -280,6 +280,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <nav class="navbar">
@@ -598,10 +599,25 @@
                     </div>
                     <div class="form-group" id="grupoNumDoc">
                         <label>Numero de Documento *</label>
-                        <input type="text" id="numDoc" placeholder="Ingrese numero" 
-                            onblur="verificarDuplicadoPaciente()" 
-                            onkeyup="if(event.key==='Enter') verificarDuplicadoPaciente()">
+                        <div style="position: relative;">
+                            <input type="text" id="numDoc" placeholder="Ingrese numero" 
+                                onblur="buscarDatosPorDNI(); verificarDuplicadoPaciente();" 
+                                onkeyup="if(event.key==='Enter'){ buscarDatosPorDNI(); verificarDuplicadoPaciente(); }"
+                                maxlength="8"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                style="padding-right: 90px;">
+                            <div id="dniBuscandoIndicator" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);">
+                                <span style="font-size: 12px; color: var(--accent);">🔍 Buscando...</span>
+                            </div>
+                            <div id="dniEncontradoIndicator" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);">
+                                <span style="font-size: 12px; color: #22c55e; font-weight: 600;">✅ Encontrado</span>
+                            </div>
+                        </div>
                         <div id="duplicadoMensaje" style="display: none; margin-top: 6px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;"></div>
+                        <div id="dniNoEncontradoMsg" style="display: none; margin-top: 6px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b;">
+                            ⚠️ DNI no encontrado en RENIEC. Ingrese los datos manualmente.
+                        </div>
                     </div>
                 </div>
                 <div class="form-group" id="grupoCodigoTemp" style="display:none;">
@@ -624,10 +640,19 @@
                     </div>
                     <div class="form-group">
                         <label>Fecha de Nacimiento</label>
-                        <input type="date" id="fechaNacimiento">
+                        <input type="date" id="fechaNacimiento" onchange="calcularEdad()">
+                        <div id="edadCalculada" style="font-size: 12px; color: var(--accent); margin-top: 4px; font-weight: 500;"></div>
                     </div>
                 </div>
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Sexo</label>
+                        <select id="sexo">
+                            <option value="">Seleccione...</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Origen *</label>
                         <select id="origen" required>
@@ -636,24 +661,26 @@
                             <option value="CEM">CEM</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Oficio / Referencia</label>
                         <input type="text" id="oficio" placeholder="N° de oficio judicial o CEM">
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label>Seguro</label>
                         <input type="text" id="seguro" placeholder="Tipo de seguro">
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Celular</label>
                         <input type="text" id="celular" placeholder="999999999">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Direccion</label>
-                    <input type="text" id="direccion" placeholder="Av. Principal 123">
+                    <div class="form-group">
+                        <label>Direccion</label>
+                        <input type="text" id="direccion" placeholder="Av. Principal 123">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Distrito</label>
@@ -773,6 +800,114 @@
             }
         }
 
+        // ==================== BUSQUEDA DNI - AUTOCOMPLETAR DATOS PERSONALES ====================
+        async function buscarDatosPorDNI() {
+            const tipoDoc = document.getElementById('tipoDoc').value;
+            const numDoc = document.getElementById('numDoc').value.trim();
+            const indicadorBuscando = document.getElementById('dniBuscandoIndicator');
+            const indicadorEncontrado = document.getElementById('dniEncontradoIndicator');
+            const msgNoEncontrado = document.getElementById('dniNoEncontradoMsg');
+
+            // Solo buscar si es DNI y tiene 8 digitos
+            if (tipoDoc !== 'DNI' || !numDoc || numDoc.length !== 8 || !/^\d{8}$/.test(numDoc)) {
+                if (indicadorBuscando) indicadorBuscando.style.display = 'none';
+                if (indicadorEncontrado) indicadorEncontrado.style.display = 'none';
+                if (msgNoEncontrado) msgNoEncontrado.style.display = 'none';
+                return;
+            }
+
+            // Mostrar indicador de busqueda
+            if (indicadorBuscando) indicadorBuscando.style.display = 'block';
+            if (indicadorEncontrado) indicadorEncontrado.style.display = 'none';
+            if (msgNoEncontrado) msgNoEncontrado.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/pacientes/datos-personales/${encodeURIComponent(numDoc)}`);
+                const result = await response.json();
+
+                if (indicadorBuscando) indicadorBuscando.style.display = 'none';
+
+                if (response.ok && result.success && result.data) {
+                    // DNI ENCONTRADO - Autocompletar
+                    const datos = result.data;
+
+                    // Autocompletar Apellidos y Nombres
+                    if (datos.apellidos_nombres) {
+                        document.getElementById('apellidosNombres').value = datos.apellidos_nombres;
+                        const campoNombres = document.getElementById('apellidosNombres');
+                        campoNombres.style.transition = 'background 0.5s';
+                        campoNombres.style.background = '#d1fae5';
+                        setTimeout(() => { campoNombres.style.background = ''; }, 1500);
+                    }
+
+                    // Autocompletar Fecha de Nacimiento
+                    if (datos.fecha_nacimiento) {
+                        document.getElementById('fechaNacimiento').value = datos.fecha_nacimiento;
+                        calcularEdad();
+                        const campoFecha = document.getElementById('fechaNacimiento');
+                        campoFecha.style.transition = 'background 0.5s';
+                        campoFecha.style.background = '#d1fae5';
+                        setTimeout(() => { campoFecha.style.background = ''; }, 1500);
+                    }
+
+                    // Autocompletar Sexo
+                    if (datos.sexo) {
+                        const sexoValue = datos.sexo.toUpperCase().trim();
+                        if (sexoValue === 'M' || sexoValue === 'MASCULINO') {
+                            document.getElementById('sexo').value = 'M';
+                        } else if (sexoValue === 'F' || sexoValue === 'FEMENINO') {
+                            document.getElementById('sexo').value = 'F';
+                        }
+                        const campoSexo = document.getElementById('sexo');
+                        campoSexo.style.transition = 'background 0.5s';
+                        campoSexo.style.background = '#d1fae5';
+                        setTimeout(() => { campoSexo.style.background = ''; }, 1500);
+                    }
+
+                    if (indicadorEncontrado) indicadorEncontrado.style.display = 'block';
+                    showToast('success', 'DNI encontrado', `Datos de ${datos.apellidos_nombres || 'paciente'} cargados automaticamente`);
+
+                } else {
+                    // DNI NO ENCONTRADO
+                    if (msgNoEncontrado) msgNoEncontrado.style.display = 'block';
+                    document.getElementById('apellidosNombres').value = '';
+                    document.getElementById('fechaNacimiento').value = '';
+                    document.getElementById('sexo').value = '';
+                    document.getElementById('edadCalculada').textContent = '';
+                }
+
+            } catch (e) {
+                console.error('Error buscando DNI:', e);
+                if (indicadorBuscando) indicadorBuscando.style.display = 'none';
+            }
+        }
+
+        // ==================== CALCULAR EDAD ====================
+        function calcularEdad() {
+            const fechaNacimiento = document.getElementById('fechaNacimiento').value;
+            const edadDiv = document.getElementById('edadCalculada');
+
+            if (!fechaNacimiento) {
+                edadDiv.textContent = '';
+                return;
+            }
+
+            const hoy = new Date();
+            const nacimiento = new Date(fechaNacimiento + 'T00:00:00');
+            let edad = hoy.getFullYear() - nacimiento.getFullYear();
+            const mes = hoy.getMonth() - nacimiento.getMonth();
+
+            if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+                edad--;
+            }
+
+            if (edad >= 0 && edad < 150) {
+                edadDiv.textContent = `Edad: ${edad} anio${edad !== 1 ? 's' : ''}`;
+            } else {
+                edadDiv.textContent = '';
+            }
+        }
+
         function formEditarPaciente(p) {
             return `
                 <input type="hidden" id="pacienteId" value="${p.id}">
@@ -806,10 +941,19 @@
                     </div>
                     <div class="form-group">
                         <label>Fecha de Nacimiento</label>
-                        <input type="date" id="fechaNacimiento" value="${p.fecha_nacimiento || ''}">
+                        <input type="date" id="fechaNacimiento" value="${p.fecha_nacimiento || ''}" onchange="calcularEdad()">
+                        <div id="edadCalculada" style="font-size: 12px; color: var(--accent); margin-top: 4px; font-weight: 500;"></div>
                     </div>
                 </div>
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Sexo</label>
+                        <select id="sexo">
+                            <option value="" ${!p.sexo ? 'selected' : ''}>Seleccione...</option>
+                            <option value="M" ${p.sexo === 'M' ? 'selected' : ''}>Masculino</option>
+                            <option value="F" ${p.sexo === 'F' ? 'selected' : ''}>Femenino</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Origen *</label>
                         <select id="origen" required>
@@ -817,24 +961,26 @@
                             <option value="CEM" ${p.origen === 'CEM' ? 'selected' : ''}>CEM</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Oficio / Referencia</label>
                         <input type="text" id="oficio" value="${p.oficio || ''}" placeholder="N° de oficio judicial o CEM">
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label>Seguro</label>
                         <input type="text" id="seguro" value="${p.seguro || ''}" placeholder="Tipo de seguro">
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Celular</label>
                         <input type="text" id="celular" value="${p.celular || ''}" placeholder="999999999">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Direccion</label>
-                    <input type="text" id="direccion" value="${p.direccion || ''}" placeholder="Av. Principal 123">
+                    <div class="form-group">
+                        <label>Direccion</label>
+                        <input type="text" id="direccion" value="${p.direccion || ''}" placeholder="Av. Principal 123">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Distrito</label>
@@ -1012,6 +1158,7 @@
                     apellidos_nombres: apellidosNombres,
                     hcl: document.getElementById('hcl').value.trim() || null,
                     fecha_nacimiento: document.getElementById('fechaNacimiento').value || null,
+                    sexo: document.getElementById('sexo').value || null,
                     seguro: document.getElementById('seguro').value.trim() || null,
                     direccion: document.getElementById('direccion').value.trim() || null,
                     distrito: document.getElementById('distrito').value.trim() || null,
@@ -1085,6 +1232,7 @@
                     apellidos_nombres: apellidosNombres,
                     hcl: document.getElementById('hcl').value.trim() || null,
                     fecha_nacimiento: document.getElementById('fechaNacimiento').value || null,
+                    sexo: document.getElementById('sexo').value || null,
                     seguro: document.getElementById('seguro').value.trim() || null,
                     direccion: document.getElementById('direccion').value.trim() || null,
                     distrito: document.getElementById('distrito').value.trim() || null,
@@ -1646,6 +1794,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
             let html = `<table class="data-table"><thead><tr>
                 <th style="width: 120px;">Documento</th>
                 <th>Nombres</th>
+                <th style="width: 60px;">Sexo</th>
                 <th style="width: 100px;">HCL</th>
                 <th style="width: 120px;">Origen</th>
                 <th style="width: 90px;">Estado</th>
@@ -1660,6 +1809,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                 html += `<tr>
                     <td><strong>${p.tipo_documento}</strong><br><small style="color: var(--text-muted);">${doc || '-'}</small></td>
                     <td>${p.apellidos_nombres}</td>
+                    <td style="text-align: center;">${p.sexo === 'M' ? '♂️ M' : p.sexo === 'F' ? '♀️ F' : '-'}</td>
                     <td>${p.hcl || '-'}</td>
                     <td><span class="badge ${badgeOrigen}">${p.origen}</span></td>
                     <td><span class="badge ${badgeEstado}">${p.estado}</span></td>
@@ -3581,6 +3731,7 @@ function toggleFuaLabel(idx) {
                 { key: 'origen', header: 'Origen', width: 15 },
                 { key: 'estado', header: 'Estado', width: 10 },
                 { key: 'fecha_nacimiento', header: 'Fecha Nac.', width: 12 },
+                { key: 'sexo', header: 'Sexo', width: 8 },
                 { key: 'celular', header: 'Celular', width: 12 },
                 { key: 'direccion', header: 'Direccion', width: 25 },
                 { key: 'distrito', header: 'Distrito', width: 15 },
@@ -3613,6 +3764,7 @@ function toggleFuaLabel(idx) {
                 { key: 'tipo_documento', header: 'Tipo Doc.' },
                 { key: 'numero_documento', header: 'Documento' },
                 { key: 'hcl', header: 'HCL' },
+                { key: 'sexo', header: 'Sexo' },
                 { key: 'origen', header: 'Origen' },
                 { key: 'estado', header: 'Estado' },
                 { key: 'celular', header: 'Celular' }
