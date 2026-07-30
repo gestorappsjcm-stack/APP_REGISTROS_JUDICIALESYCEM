@@ -530,6 +530,8 @@ def update_atencion(id):
                     data['imc'] = round(peso / (talla * talla), 2)
             except:
                 pass
+        
+        # medicamentos ya viene como JSON/array desde el frontend
         response = supabase_service.table('pac_atenciones').update(data).eq('id', id).execute()
         return jsonify({'data': response.data, 'message': 'Atencion actualizada correctamente'})
     except Exception as e:
@@ -1056,6 +1058,118 @@ def buscar_diagnosticos():
         response = supabase.table('diagnosticospsico').select('*').or_(f"codigo.ilike.%{query}%,nombre.ilike.%{query}%").limit(20).execute()
         return jsonify({'data': response.data})
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================
+# API - MEDICAMENTOS
+# ============================================
+
+@app.route('/api/medicamentos', methods=['GET'])
+def get_medicamentos():
+    """Lista todos los medicamentos activos (para selector en atenciones)."""
+    if supabase is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    try:
+        busqueda = request.args.get('q', '').strip()
+        query = supabase.table('pac_medicamentos').select('*').eq('activo', True).order('nombre', asc=True)
+        
+        if busqueda:
+            query = query.or_(f"codigo_sismed.ilike.%{busqueda}%,nombre.ilike.%{busqueda}%")
+        
+        response = query.limit(50).execute()
+        return jsonify({'data': response.data})
+    except Exception as e:
+        print(f"Error en get_medicamentos: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/medicamentos', methods=['POST'])
+def create_medicamento():
+    """Crear nuevo medicamento (solo admin)."""
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    if session.get('user', {}).get('rol') != 'administrador':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    try:
+        data = request.get_json()
+        campos_requeridos = ['codigo_sismed', 'nombre']
+        for campo in campos_requeridos:
+            if not data.get(campo) or str(data.get(campo)).strip() == '':
+                return jsonify({'error': f'El campo "{campo}" es obligatorio'}), 400
+        
+        # Verificar duplicado de código SISMED
+        existe = supabase_service.table('pac_medicamentos').select('id').eq('codigo_sismed', data['codigo_sismed'].strip()).execute()
+        if existe.data and len(existe.data) > 0:
+            return jsonify({'error': f"Ya existe un medicamento con código SISMED {data['codigo_sismed']}"}), 409
+        
+        nuevo_medicamento = {
+            'codigo_sismed': data['codigo_sismed'].strip().upper(),
+            'nombre': data['nombre'].strip().upper(),
+            'concentracion': data.get('concentracion', '').strip(),
+            'forma_farmaceutica': data.get('forma_farmaceutica', '').strip(),
+            'categoria': data.get('categoria', 'Otro').strip(),
+            'activo': data.get('activo', True)
+        }
+        
+        response = supabase_service.table('pac_medicamentos').insert(nuevo_medicamento).execute()
+        return jsonify({'data': response.data, 'message': 'Medicamento registrado correctamente'})
+    except Exception as e:
+        print(f"Error en create_medicamento: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/medicamentos/<id>', methods=['PUT'])
+def update_medicamento(id):
+    """Editar medicamento (solo admin)."""
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    if session.get('user', {}).get('rol') != 'administrador':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    try:
+        data = request.get_json()
+        update_data = {}
+        
+        campos = ['codigo_sismed', 'nombre', 'concentracion', 'forma_farmaceutica', 'categoria', 'activo']
+        for campo in campos:
+            if campo in data:
+                if isinstance(data[campo], str):
+                    update_data[campo] = data[campo].strip()
+                    if campo in ['codigo_sismed', 'nombre']:
+                        update_data[campo] = update_data[campo].upper()
+                else:
+                    update_data[campo] = data[campo]
+        
+        if not update_data:
+            return jsonify({'error': 'No hay campos para actualizar'}), 400
+        
+        update_data['updated_at'] = datetime.now().isoformat()
+        
+        response = supabase_service.table('pac_medicamentos').update(update_data).eq('id', id).execute()
+        return jsonify({'data': response.data, 'message': 'Medicamento actualizado correctamente'})
+    except Exception as e:
+        print(f"Error en update_medicamento: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/medicamentos/<id>', methods=['DELETE'])
+def delete_medicamento(id):
+    """Eliminar medicamento (solo admin) - soft delete cambiando activo a false."""
+    if supabase_service is None:
+        return jsonify({'error': 'Sin conexion'}), 500
+    if session.get('user', {}).get('rol') != 'administrador':
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    try:
+        # Soft delete: desactivar en lugar de eliminar
+        response = supabase_service.table('pac_medicamentos').update({
+            'activo': False,
+            'updated_at': datetime.now().isoformat()
+        }).eq('id', id).execute()
+        return jsonify({'message': 'Medicamento desactivado correctamente'})
+    except Exception as e:
+        print(f"Error en delete_medicamento: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================

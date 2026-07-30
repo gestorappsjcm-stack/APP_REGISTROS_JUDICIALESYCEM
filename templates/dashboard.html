@@ -275,7 +275,57 @@
         .prog-table input:focus { border-color: var(--primary); outline: none; }
         .prog-total { background: var(--primary); color: white; font-weight: 700; }
         .prog-total td { border-color: var(--primary-dark); }
+        /* ============================================
+        SECCION MEDICAMENTOS
+        ============================================ */
+        .medicamentos-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .medicamento-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .medicamento-item .btn-quitar {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+
+        .medicamento-campos {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .medicamento-campos .form-group {
+            margin-bottom: 0;
+        }
+
+        .medicamento-campos .form-group label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .medicamento-campos {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
     </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -491,6 +541,14 @@
 
         function closeModal() {
             document.getElementById('modalOverlay').classList.remove('active');
+            // Resetear formulario de atención si estaba abierto
+            if (document.getElementById('atencionPacienteId')) {
+                setTimeout(() => {
+                    if (typeof resetFormAtencion === 'function') {
+                        resetFormAtencion();
+                    }
+                }, 300);
+            }
         }
 
         function cerrarSesion() {
@@ -568,6 +626,7 @@
                 setTimeout(() => {
                     cargarPacientesCitadosHoy();
                     document.getElementById('fechaAtencion').value = new Date().toISOString().split('T')[0];
+                    cargarCatalogoMedicamentos();
                 }, 100);
             }
             if (type === 'reportes') {
@@ -1364,6 +1423,28 @@
                             <input type="hidden" id="diagnosticoAtencion" required>
                         </div>
 
+                        <!-- ============================================
+                            SECCION: MEDICAMENTOS (OPCIONAL)
+                            ============================================ -->
+                        <div class="medicamentos-section">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0"><i class="💊 text-primary me-2"></i>Medicamentos</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkAsignarMedicamentos" onchange="toggleMedicamentos()">
+                                    <label class="form-check-label" for="chkAsignarMedicamentos" style="font-size: 13px;">
+                                        ¿Asignar medicamentos?
+                                    </label>
+                                </div>
+                            </div>
+    
+                            <div id="medicamentosContainer" style="display: none;">
+                                <div id="listaMedicamentos"></div>
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" onclick="agregarMedicamento()">
+                                    <i class="➕ me-1"></i> Agregar medicamento
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- PROCEDIMIENTOS REALIZADOS -->
                         <!-- CAMBIO: Leyenda de estrategias/SIS agregada -->
                         <div class="form-group">
@@ -1411,7 +1492,7 @@
                         </div>
 
                         <div class="form-row" style="margin-top: 8px;">
-                            <button type="button" class="btn-primary" style="background: #64748b;" onclick="closeModal()">Cancelar</button>
+                            <button type="button" class="btn-primary" style="background: #64748b;" onclick="resetFormAtencion(); closeModal();">Cancelar</button>
                             <button class="btn-primary" id="btnGuardarAtencion" onclick="guardarAtencion()">Guardar Atención</button>
                         </div>
                     </div>
@@ -1598,6 +1679,44 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
             document.getElementById('datosPacienteAtencion').style.display = 'none';
             document.getElementById('buscarPacienteAtencion').value = '';
             document.getElementById('resultadosBusquedaAtencion').innerHTML = '';
+        }
+
+        function resetFormAtencion() {
+            pacienteSeleccionadoAtencion = null;
+            diagnosticosSeleccionados = [];
+            procedimientosSeleccionados = [];
+            medicamentosSeleccionados = [];
+
+            document.getElementById('buscadorPacienteAtencion').style.display = 'block';
+            document.getElementById('datosPacienteAtencion').style.display = 'none';
+            document.getElementById('buscarPacienteAtencion').value = '';
+            document.getElementById('resultadosBusquedaAtencion').innerHTML = '';
+            document.getElementById('diagnosticosSeleccionados').innerHTML = '';
+            document.getElementById('procedimientosSeleccionados').innerHTML = '';
+            document.getElementById('buscarDiagnostico').value = '';
+            document.getElementById('buscarProcedimiento').value = '';
+            document.getElementById('tratamientoAtencion').value = '';
+            document.getElementById('observacionesAtencion').value = '';
+            document.getElementById('proximaCitaAtencion').value = '';
+            document.getElementById('finalizaProceso').checked = false;
+            document.getElementById('motivoAtencion').value = '';
+            document.getElementById('paAtencion').value = '';
+            document.getElementById('fcAtencion').value = '';
+            document.getElementById('frAtencion').value = '';
+            document.getElementById('tempAtencion').value = '';
+            document.getElementById('pesoAtencion').value = '';
+            document.getElementById('tallaAtencion').value = '';
+            document.getElementById('imcAtencion').value = '';
+            document.getElementById('imcClasificacionAtencion').textContent = '';
+            document.getElementById('imcClasificacionAtencion').style.backgroundColor = '';
+
+            // Reset medicamentos
+            const chkMed = document.getElementById('chkAsignarMedicamentos');
+            if (chkMed) chkMed.checked = false;
+            const medContainer = document.getElementById('medicamentosContainer');
+            if (medContainer) medContainer.style.display = 'none';
+            const listaMed = document.getElementById('listaMedicamentos');
+            if (listaMed) listaMed.innerHTML = '';
         }
 
         function calcularIMCAtencion() {
@@ -1880,6 +1999,13 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     return; 
                 }
 
+                const medicamentosGuardar = obtenerMedicamentosParaGuardar();
+                const chkMedicamentos = document.getElementById('chkAsignarMedicamentos');
+                if (chkMedicamentos && chkMedicamentos.checked && medicamentosGuardar.length === 0) {
+                    showToast('warning', 'Atención', 'Marcó "Asignar medicamentos" pero no seleccionó ninguno. Desmarque la opción o agregue al menos un medicamento.');
+                    return;
+                }
+
                 const pesoVal = document.getElementById('pesoAtencion').value;
                 const tallaVal = document.getElementById('tallaAtencion').value;
 
@@ -1888,6 +2014,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     fecha_atencion: fechaAtencion,
                     motivo: document.getElementById('motivoAtencion').value.trim() || null,
                     diagnostico: diagnosticosSeleccionados.map(d => `${d.codigo} - ${d.nombre}`).join('; '),
+                    medicamentos: medicamentosGuardar,
                     procedimientos: procedimientosSeleccionados.map(p => `${p.cpms} - ${p.descripcion}`).join('; ') || null,
                     tratamiento: document.getElementById('tratamientoAtencion').value.trim() || null,
                     pa: document.getElementById('paAtencion').value.trim() || null,
@@ -1918,6 +2045,10 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
 
                 diagnosticosSeleccionados = [];
                 procedimientosSeleccionados = [];
+                medicamentosSeleccionados = [];
+                document.getElementById('chkAsignarMedicamentos').checked = false;
+                document.getElementById('medicamentosContainer').style.display = 'none';
+                document.getElementById('listaMedicamentos').innerHTML = '';
                 closeModal();
                 cargarStats();
                 cargarGrafico();
@@ -4213,6 +4344,189 @@ function toggleFuaLabel(idx) {
             document.querySelectorAll('.chart-filter').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             cargarGrafico(anio);
+        }
+
+        // ============================================
+// VARIABLES GLOBALES PARA MEDICAMENTOS
+// ============================================
+        let catalogoMedicamentos = [];
+        let medicamentosSeleccionados = [];
+
+        // ============================================
+        // CARGAR CATÁLOGO DE MEDICAMENTOS
+        // ============================================
+        async function cargarCatalogoMedicamentos() {
+            try {
+                const response = await fetch('/api/medicamentos');
+                const result = await response.json();
+                if (result.data) {
+                    catalogoMedicamentos = result.data;
+                }
+            } catch (e) {
+                console.error('Error cargando medicamentos:', e);
+            }
+        }
+
+        // ============================================
+        // TOGGLE SECCIÓN MEDICAMENTOS
+        // ============================================
+        function toggleMedicamentos() {
+            const chk = document.getElementById('chkAsignarMedicamentos');
+            const container = document.getElementById('medicamentosContainer');
+            if (chk.checked) {
+                container.style.display = 'block';
+                if (medicamentosSeleccionados.length === 0) {
+                    agregarMedicamento();
+                }
+            } else {
+                container.style.display = 'none';
+                medicamentosSeleccionados = [];
+                document.getElementById('listaMedicamentos').innerHTML = '';
+            }
+        }
+
+        // ============================================
+        // AGREGAR FILA DE MEDICAMENTO
+        // ============================================
+        function agregarMedicamento() {
+            const index = medicamentosSeleccionados.length;
+            medicamentosSeleccionados.push({
+                medicamento_id: '',
+                codigo_sismed: '',
+                nombre: '',
+                concentracion: '',
+                cantidad: 30,
+                cantidad_otra: null,
+                dosis: '',
+                frecuencia: '',
+                duracion: ''
+            });
+    
+            const div = document.createElement('div');
+            div.className = 'medicamento-item';
+            div.id = `medicamento-${index}`;
+            div.innerHTML = `
+                <button type="button" class="btn btn-danger btn-sm btn-quitar" onclick="quitarMedicamento(${index})">
+                    <i class="✕"></i>
+                </button>
+                <div class="medicamento-campos">
+                    <div class="form-group">
+                        <label>Medicamento</label>
+                        <select class="form-select form-select-sm" id="med-select-${index}" onchange="onMedicamentoChange(${index})">
+                            <option value="">-- Seleccionar --</option>
+                            ${catalogoMedicamentos.map(m => `
+                                <option value="${m.id}" data-codigo="${m.codigo_sismed}" data-nombre="${m.nombre}" data-concentracion="${m.concentracion || ''}">
+                                    ${m.codigo_sismed} - ${m.nombre} ${m.concentracion ? '(' + m.concentracion + ')' : ''}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <select class="form-select form-select-sm" id="med-cantidad-${index}" onchange="onCantidadChange(${index})">
+                            <option value="5">5</option>
+                            <option value="15">15</option>
+                            <option value="30" selected>30</option>
+                            <option value="45">45</option>
+                            <option value="60">60</option>
+                            <option value="90">90</option>
+                            <option value="otra">Otra</option>
+                        </select>
+                        <input type="number" class="form-control form-control-sm mt-1" id="med-cantidad-otra-${index}" 
+                            style="display: none;" placeholder="Cantidad" min="1" max="999">
+                    </div>
+                    <div class="form-group">
+                        <label>Dosis</label>
+                        <input type="text" class="form-control form-control-sm" id="med-dosis-${index}" placeholder="Ej: 1 tableta">
+                    </div>
+                    <div class="form-group">
+                        <label>Frecuencia</label>
+                        <input type="text" class="form-control form-control-sm" id="med-frecuencia-${index}" placeholder="Ej: C/24h">
+                    </div>
+                    <div class="form-group">
+                        <label>Duración</label>
+                    <input type="text" class="form-control form-control-sm" id="med-duracion-${index}" placeholder="Ej: 30 días">
+            </div>
+                </div>
+            `;
+            document.getElementById('listaMedicamentos').appendChild(div);
+        }
+
+        // ============================================
+        // EVENTOS DE MEDICAMENTOS
+        // ============================================
+        function onMedicamentoChange(index) {
+            const select = document.getElementById(`med-select-${index}`);
+            const option = select.options[select.selectedIndex];
+            if (option.value) {
+                medicamentosSeleccionados[index].medicamento_id = option.value;
+                medicamentosSeleccionados[index].codigo_sismed = option.dataset.codigo;
+                medicamentosSeleccionados[index].nombre = option.dataset.nombre;
+                medicamentosSeleccionados[index].concentracion = option.dataset.concentracion;
+            }
+        }
+
+        function onCantidadChange(index) {
+            const select = document.getElementById(`med-cantidad-${index}`);
+            const otraInput = document.getElementById(`med-cantidad-otra-${index}`);
+            if (select.value === 'otra') {
+                otraInput.style.display = 'block';
+                medicamentosSeleccionados[index].cantidad = null;
+            } else {
+                otraInput.style.display = 'none';
+                medicamentosSeleccionados[index].cantidad = parseInt(select.value);
+            }
+        }
+
+        function quitarMedicamento(index) {
+            const item = document.getElementById(`medicamento-${index}`);
+            if (item) item.remove();
+            medicamentosSeleccionados[index] = null; // Marcar como eliminado
+        }
+
+        // ============================================
+        // OBTENER MEDICAMENTOS PARA ENVIAR AL BACKEND
+        // ============================================
+        function obtenerMedicamentosParaGuardar() {
+            if (!document.getElementById('chkAsignarMedicamentos').checked) {
+                return [];
+            }
+    
+            const medicamentos = [];
+            medicamentosSeleccionados.forEach((med, index) => {
+                if (!med) return; // Saltar eliminados
+        
+                const select = document.getElementById(`med-select-${index}`);
+                if (!select || !select.value) return; // Saltar si no hay medicamento seleccionado
+        
+                const cantidadSelect = document.getElementById(`med-cantidad-${index}`);
+                let cantidad = med.cantidad;
+                let cantidadOtra = null;
+        
+                if (cantidadSelect && cantidadSelect.value === 'otra') {
+                    const otraInput = document.getElementById(`med-cantidad-otra-${index}`);
+                    cantidad = otraInput ? parseInt(otraInput.value) || 0 : 0;
+                    cantidadOtra = cantidad;
+                }
+        
+                const dosis = document.getElementById(`med-dosis-${index}`)?.value || '';
+                const frecuencia = document.getElementById(`med-frecuencia-${index}`)?.value || '';
+                const duracion = document.getElementById(`med-duracion-${index}`)?.value || '';
+        
+                medicamentos.push({
+                    medicamento_id: med.medicamento_id,
+                    codigo_sismed: med.codigo_sismed,
+                    nombre: med.nombre,
+                    concentracion: med.concentracion,
+                    cantidad: cantidad,
+                    cantidad_otra: cantidadOtra,
+                    dosis: dosis,
+                    frecuencia: frecuencia,
+                    duracion: duracion
+                });
+            });
+    
+            return medicamentos;
         }
 
         // ==================== STATS ====================
