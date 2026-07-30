@@ -617,6 +617,7 @@
             if (type === 'registrarAtencion') {
                 setTimeout(() => {
                     cargarPacientesCitadosHoy();
+                    cargarCatalogoMedicamentos();  // <-- AGREGAR ESTA LÍNEA
                     document.getElementById('fechaAtencion').value = new Date().toISOString().split('T')[0];
                 }, 100);
             }
@@ -1959,7 +1960,6 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     diagnostico: diagnosticosSeleccionados.map(d => `${d.codigo} - ${d.nombre}`).join('; '),
                     medicamentos: obtenerMedicamentosParaGuardar(),
                     procedimientos: procedimientosSeleccionados.map(p => `${p.cpms} - ${p.descripcion}`).join('; ') || null,
-                    tratamiento: document.getElementById('tratamientoAtencion').value.trim() || null,
                     pa: document.getElementById('paAtencion').value.trim() || null,
                     fc: document.getElementById('fcAtencion').value ? parseInt(document.getElementById('fcAtencion').value) : null,
                     fr: document.getElementById('frAtencion').value ? parseInt(document.getElementById('frAtencion').value) : null,
@@ -4335,8 +4335,12 @@ function toggleFuaLabel(idx) {
             const container = document.getElementById('medicamentosContainer');
             if (chk.checked) {
                 container.style.display = 'block';
-                if (medicamentosSeleccionados.length === 0) {
-                    agregarMedicamento();
+                if (catalogoMedicamentos.length === 0) {
+                    cargarCatalogoMedicamentos().then(() => {
+                        if (medicamentosSeleccionados.length === 0) agregarMedicamento();
+                    });
+                } else {
+                    if (medicamentosSeleccionados.length === 0) agregarMedicamento();
                 }
             } else {
                 container.style.display = 'none';
