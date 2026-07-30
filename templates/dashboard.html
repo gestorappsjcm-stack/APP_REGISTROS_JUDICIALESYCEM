@@ -541,14 +541,6 @@
 
         function closeModal() {
             document.getElementById('modalOverlay').classList.remove('active');
-            // Resetear formulario de atención si estaba abierto
-            if (document.getElementById('atencionPacienteId')) {
-                setTimeout(() => {
-                    if (typeof resetFormAtencion === 'function') {
-                        resetFormAtencion();
-                    }
-                }, 300);
-            }
         }
 
         function cerrarSesion() {
@@ -626,7 +618,6 @@
                 setTimeout(() => {
                     cargarPacientesCitadosHoy();
                     document.getElementById('fechaAtencion').value = new Date().toISOString().split('T')[0];
-                    cargarCatalogoMedicamentos();
                 }, 100);
             }
             if (type === 'reportes') {
@@ -1428,7 +1419,7 @@
                             ============================================ -->
                         <div class="medicamentos-section">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="mb-0"><i class="💊 text-primary me-2"></i>Medicamentos</h6>
+                                <h6 class="mb-0"><i class="fas fa-pills text-primary me-2"></i>Medicamentos</h6>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="chkAsignarMedicamentos" onchange="toggleMedicamentos()">
                                     <label class="form-check-label" for="chkAsignarMedicamentos" style="font-size: 13px;">
@@ -1440,7 +1431,7 @@
                             <div id="medicamentosContainer" style="display: none;">
                                 <div id="listaMedicamentos"></div>
                                 <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" onclick="agregarMedicamento()">
-                                    <i class="➕ me-1"></i> Agregar medicamento
+                                    <i class="fas fa-plus me-1"></i> Agregar medicamento
                                 </button>
                             </div>
                         </div>
@@ -1467,13 +1458,10 @@
                             <input type="hidden" id="procedimientosAtencion">
                         </div>
 
+
                         <div class="form-group">
-                            <label>Tratamiento</label>
-                            <textarea id="tratamientoAtencion" placeholder="Medicamentos, indicaciones..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Observaciones</label>
-                            <textarea id="observacionesAtencion" placeholder="Notas adicionales..."></textarea>
+                            <label>Observaciones / Indicaciones Adicionales</label>
+                            <textarea id="observacionesAtencion" placeholder="Indicaciones no farmacológicas, recomendaciones, notas adicionales..."></textarea>
                         </div>
 
                         <div class="form-row">
@@ -1492,7 +1480,7 @@
                         </div>
 
                         <div class="form-row" style="margin-top: 8px;">
-                            <button type="button" class="btn-primary" style="background: #64748b;" onclick="resetFormAtencion(); closeModal();">Cancelar</button>
+                            <button type="button" class="btn-primary" style="background: #64748b;" onclick="closeModal()">Cancelar</button>
                             <button class="btn-primary" id="btnGuardarAtencion" onclick="guardarAtencion()">Guardar Atención</button>
                         </div>
                     </div>
@@ -1679,44 +1667,6 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
             document.getElementById('datosPacienteAtencion').style.display = 'none';
             document.getElementById('buscarPacienteAtencion').value = '';
             document.getElementById('resultadosBusquedaAtencion').innerHTML = '';
-        }
-
-        function resetFormAtencion() {
-            pacienteSeleccionadoAtencion = null;
-            diagnosticosSeleccionados = [];
-            procedimientosSeleccionados = [];
-            medicamentosSeleccionados = [];
-
-            document.getElementById('buscadorPacienteAtencion').style.display = 'block';
-            document.getElementById('datosPacienteAtencion').style.display = 'none';
-            document.getElementById('buscarPacienteAtencion').value = '';
-            document.getElementById('resultadosBusquedaAtencion').innerHTML = '';
-            document.getElementById('diagnosticosSeleccionados').innerHTML = '';
-            document.getElementById('procedimientosSeleccionados').innerHTML = '';
-            document.getElementById('buscarDiagnostico').value = '';
-            document.getElementById('buscarProcedimiento').value = '';
-            document.getElementById('tratamientoAtencion').value = '';
-            document.getElementById('observacionesAtencion').value = '';
-            document.getElementById('proximaCitaAtencion').value = '';
-            document.getElementById('finalizaProceso').checked = false;
-            document.getElementById('motivoAtencion').value = '';
-            document.getElementById('paAtencion').value = '';
-            document.getElementById('fcAtencion').value = '';
-            document.getElementById('frAtencion').value = '';
-            document.getElementById('tempAtencion').value = '';
-            document.getElementById('pesoAtencion').value = '';
-            document.getElementById('tallaAtencion').value = '';
-            document.getElementById('imcAtencion').value = '';
-            document.getElementById('imcClasificacionAtencion').textContent = '';
-            document.getElementById('imcClasificacionAtencion').style.backgroundColor = '';
-
-            // Reset medicamentos
-            const chkMed = document.getElementById('chkAsignarMedicamentos');
-            if (chkMed) chkMed.checked = false;
-            const medContainer = document.getElementById('medicamentosContainer');
-            if (medContainer) medContainer.style.display = 'none';
-            const listaMed = document.getElementById('listaMedicamentos');
-            if (listaMed) listaMed.innerHTML = '';
         }
 
         function calcularIMCAtencion() {
@@ -1999,13 +1949,6 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     return; 
                 }
 
-                const medicamentosGuardar = obtenerMedicamentosParaGuardar();
-                const chkMedicamentos = document.getElementById('chkAsignarMedicamentos');
-                if (chkMedicamentos && chkMedicamentos.checked && medicamentosGuardar.length === 0) {
-                    showToast('warning', 'Atención', 'Marcó "Asignar medicamentos" pero no seleccionó ninguno. Desmarque la opción o agregue al menos un medicamento.');
-                    return;
-                }
-
                 const pesoVal = document.getElementById('pesoAtencion').value;
                 const tallaVal = document.getElementById('tallaAtencion').value;
 
@@ -2014,7 +1957,7 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
                     fecha_atencion: fechaAtencion,
                     motivo: document.getElementById('motivoAtencion').value.trim() || null,
                     diagnostico: diagnosticosSeleccionados.map(d => `${d.codigo} - ${d.nombre}`).join('; '),
-                    medicamentos: medicamentosGuardar,
+                    medicamentos: obtenerMedicamentosParaGuardar(),
                     procedimientos: procedimientosSeleccionados.map(p => `${p.cpms} - ${p.descripcion}`).join('; ') || null,
                     tratamiento: document.getElementById('tratamientoAtencion').value.trim() || null,
                     pa: document.getElementById('paAtencion').value.trim() || null,
@@ -2045,10 +1988,6 @@ function seleccionarPacienteCitado(id, nombre, tipoDoc, doc, hcl) {
 
                 diagnosticosSeleccionados = [];
                 procedimientosSeleccionados = [];
-                medicamentosSeleccionados = [];
-                document.getElementById('chkAsignarMedicamentos').checked = false;
-                document.getElementById('medicamentosContainer').style.display = 'none';
-                document.getElementById('listaMedicamentos').innerHTML = '';
                 closeModal();
                 cargarStats();
                 cargarGrafico();
@@ -4407,7 +4346,7 @@ function toggleFuaLabel(idx) {
             div.id = `medicamento-${index}`;
             div.innerHTML = `
                 <button type="button" class="btn btn-danger btn-sm btn-quitar" onclick="quitarMedicamento(${index})">
-                    <i class="✕"></i>
+                    <i class="fas fa-times"></i>
                 </button>
                 <div class="medicamento-campos">
                     <div class="form-group">
