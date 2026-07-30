@@ -4286,8 +4286,8 @@ function toggleFuaLabel(idx) {
         }
 
         // ============================================
-// VARIABLES GLOBALES PARA MEDICAMENTOS
-// ============================================
+        // VARIABLES GLOBALES PARA MEDICAMENTOS
+        // ============================================
         let catalogoMedicamentos = [];
         let medicamentosSeleccionados = [];
 
@@ -4300,10 +4300,31 @@ function toggleFuaLabel(idx) {
                 const result = await response.json();
                 if (result.data) {
                     catalogoMedicamentos = result.data;
+                    // Actualizar selects existentes que puedan estar vacíos
+                    actualizarSelectsMedicamentos();
                 }
             } catch (e) {
                 console.error('Error cargando medicamentos:', e);
             }
+        }
+
+        function actualizarSelectsMedicamentos() {
+            // Actualizar todos los selects de medicamentos que ya existen en el DOM
+            document.querySelectorAll('[id^="med-select-"]').forEach(select => {
+                const valorActual = select.value;
+                select.innerHTML = `
+                    <option value="">-- Seleccionar --</option>
+                    ${catalogoMedicamentos.map(m => `
+                        <option value="${m.id}" data-codigo="${m.codigo_sismed}" data-nombre="${m.nombre}" data-concentracion="${m.concentracion || ''}">
+                            ${m.codigo_sismed} - ${m.nombre} ${m.concentracion ? '(' + m.concentracion + ')' : ''}
+                        </option>
+                    `).join('')}
+                `;
+                // Restaurar selección si aún existe en el catálogo
+                if (valorActual && catalogoMedicamentos.find(m => m.id === valorActual)) {
+                    select.value = valorActual;
+                }
+            });
         }
 
         // ============================================
@@ -4342,27 +4363,31 @@ function toggleFuaLabel(idx) {
             });
     
             const div = document.createElement('div');
-            div.className = 'medicamento-item';
+            div.style.cssText = 'background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px; margin-bottom: 10px; position: relative;';
             div.id = `medicamento-${index}`;
+    
+            // Generar opciones del select (vacías si el catálogo aún no cargó, se llenarán después)
+            const opcionesMedicamentos = catalogoMedicamentos.length > 0 
+                ? catalogoMedicamentos.map(m => `
+                    <option value="${m.id}" data-codigo="${m.codigo_sismed}" data-nombre="${m.nombre}" data-concentracion="${m.concentracion || ''}">
+                        ${m.codigo_sismed} - ${m.nombre} ${m.concentracion ? '(' + m.concentracion + ')' : ''}
+                    </option>
+                `).join('')
+                : '';
+    
             div.innerHTML = `
-                <button type="button" class="btn btn-danger btn-sm btn-quitar" onclick="quitarMedicamento(${index})">
-                    <i class="fas fa-times"></i>
-                </button>
-                <div class="medicamento-campos">
-                    <div class="form-group">
-                        <label>Medicamento</label>
-                        <select class="form-select form-select-sm" id="med-select-${index}" onchange="onMedicamentoChange(${index})">
+                <button type="button" onclick="quitarMedicamento(${index})" style="position: absolute; top: 8px; right: 8px; padding: 2px 8px; font-size: 12px; background: #fee2e2; color: #991b1b; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #666;">Medicamento</label>
+                        <select id="med-select-${index}" onchange="onMedicamentoChange(${index})" style="padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;">
                             <option value="">-- Seleccionar --</option>
-                            ${catalogoMedicamentos.map(m => `
-                                <option value="${m.id}" data-codigo="${m.codigo_sismed}" data-nombre="${m.nombre}" data-concentracion="${m.concentracion || ''}">
-                                    ${m.codigo_sismed} - ${m.nombre} ${m.concentracion ? '(' + m.concentracion + ')' : ''}
-                                </option>
-                            `).join('')}
+                            ${opcionesMedicamentos}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Cantidad</label>
-                        <select class="form-select form-select-sm" id="med-cantidad-${index}" onchange="onCantidadChange(${index})">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #666;">Cantidad</label>
+                        <select id="med-cantidad-${index}" onchange="onCantidadChange(${index})" style="padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;">
                             <option value="5">5</option>
                             <option value="15">15</option>
                             <option value="30" selected>30</option>
@@ -4371,21 +4396,16 @@ function toggleFuaLabel(idx) {
                             <option value="90">90</option>
                             <option value="otra">Otra</option>
                         </select>
-                        <input type="number" class="form-control form-control-sm mt-1" id="med-cantidad-otra-${index}" 
-                            style="display: none;" placeholder="Cantidad" min="1" max="999">
+                        <input type="number" id="med-cantidad-otra-${index}" style="display: none; padding: 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; margin-top: 4px;" placeholder="Cantidad" min="1" max="999">
                     </div>
-                    <div class="form-group">
-                        <label>Dosis</label>
-                        <input type="text" class="form-control form-control-sm" id="med-dosis-${index}" placeholder="Ej: 1 tableta">
-                    </div>
-                    <div class="form-group">
-                        <label>Frecuencia</label>
-                        <input type="text" class="form-control form-control-sm" id="med-frecuencia-${index}" placeholder="Ej: C/24h">
-                    </div>
-                    <div class="form-group">
-                        <label>Duración</label>
-                    <input type="text" class="form-control form-control-sm" id="med-duracion-${index}" placeholder="Ej: 30 días">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #666;">Dosis</label>
+                        <input type="text" id="med-dosis-${index}" placeholder="Ej: 1 tableta" style="padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;">
             </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; color: #666;">Duración</label>
+                        <input type="text" id="med-duracion-${index}" placeholder="Ej: 30 días" style="padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;">
+                    </div>
                 </div>
             `;
             document.getElementById('listaMedicamentos').appendChild(div);
@@ -4420,7 +4440,7 @@ function toggleFuaLabel(idx) {
         function quitarMedicamento(index) {
             const item = document.getElementById(`medicamento-${index}`);
             if (item) item.remove();
-            medicamentosSeleccionados[index] = null; // Marcar como eliminado
+            medicamentosSeleccionados[index] = null;
         }
 
         // ============================================
@@ -4433,10 +4453,10 @@ function toggleFuaLabel(idx) {
     
             const medicamentos = [];
             medicamentosSeleccionados.forEach((med, index) => {
-                if (!med) return; // Saltar eliminados
+                if (!med) return;
         
                 const select = document.getElementById(`med-select-${index}`);
-                if (!select || !select.value) return; // Saltar si no hay medicamento seleccionado
+                if (!select || !select.value) return;
         
                 const cantidadSelect = document.getElementById(`med-cantidad-${index}`);
                 let cantidad = med.cantidad;
