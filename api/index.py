@@ -1071,8 +1071,7 @@ def get_medicamentos():
         return jsonify({'error': 'Sin conexion'}), 500
     try:
         busqueda = request.args.get('q', '').strip()
-        query = supabase.table('pac_medicamentos').select('*').eq('activo', True).order('nombre', asc=True)
-        
+        query = supabase.table('pac_medicamentos').select('*').eq('activo', True).order('nombre', desc=True)
         if busqueda:
             query = query.or_(f"codigo_sismed.ilike.%{busqueda}%,nombre.ilike.%{busqueda}%")
         
